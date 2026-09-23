@@ -46,9 +46,8 @@ document.querySelectorAll('.sb-nav [data-tab]').forEach(btn=>{
     document.querySelectorAll('.sb-nav [data-tab]').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     activeTab = btn.dataset.tab;
-    document.getElementById('mainTab').style.display = activeTab==='main' ? 'block':'none';
-    document.getElementById('biTab').style.display = activeTab==='bi' ? 'block':'none';
-    document.getElementById('scoringTab').style.display = activeTab==='scoring' ? 'block':'none';
+    const TAB_IDS = { main:'mainTab', bi:'biTab', scoring:'scoringTab', customers:'customersTab' };
+    Object.entries(TAB_IDS).forEach(([k,id])=>{ const el = document.getElementById(id); if(el) el.style.display = activeTab===k ? 'block':'none'; });
     // charts drawn while their tab was hidden have 0 width — redraw so they size to the visible box
     if(ALL_ROWS.length) renderAll();
     window.scrollTo({top:0, behavior:'smooth'});

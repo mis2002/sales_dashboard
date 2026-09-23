@@ -16,6 +16,20 @@ let state = {
 };
 let DATA_HEALTH = null;
 
+
+/* ---- Place of Supply / pin code clean-up (so "DELHI", "Delhi (07)", "07-Delhi" all become "Delhi") ---- */
+function normState(v){
+  if(v===null || v===undefined) return '';
+  let t = String(v).replace(/\(.*?\)/g,' ').replace(/^\s*\d+\s*[-–:]\s*/,'').replace(/&/g,' and ').replace(/\s+/g,' ').trim();
+  if(!t || t==='-' ) return '';
+  return t.toLowerCase().replace(/\b\w/g, c=>c.toUpperCase()).replace(/\bAnd\b/g,'and');
+}
+function normPin(v){
+  if(v===null || v===undefined) return '';
+  const d = String(v).replace(/\.0+$/,'').replace(/\D/g,'');
+  return d.length===6 ? d : '';
+}
+
 /* ---------------------- Fetch & parse ---------------------- */
 function colIndex(cols, matchers){
   for(const m of matchers){
@@ -93,7 +107,9 @@ async function fetchSheetRows(){
     ordertype: colIndex(cols, ['order types','order type','ordertype']),
     companysales: colIndex(cols, ['company sales','companysales']),
     profit: colIndex(cols, ['profit']),
-    midap: colIndex(cols, ['midap id no','midap id','midap'])
+    midap: colIndex(cols, ['midap id no','midap id','midap']),
+    state: colIndex(cols, ['place of supply','state','supply state']),
+    pincode: colIndex(cols, ['billing code','pin code','pincode','pin','zip','postal code'])
   };
   if(idx.date<0 || idx.net<0){
     throw new Error('Could not find the "Invoice Date" and/or "Amount Without Tax" columns on this tab. Check the column headers match your data sheet.');
@@ -119,11 +135,13 @@ async function fetchSheetRows(){
       salesperson: ((get(idx.salesperson)||'Unknown')+'').trim() || 'Unknown',
       ordertype: ((get(idx.ordertype)||'Unknown')+'').trim().toUpperCase() || 'UNKNOWN',
       companysales: ((get(idx.companysales)||'NO')+'').trim().toUpperCase(),
-      midap: idx.midap>=0 ? ((get(idx.midap)||'')+'').trim() : ''
+      midap: idx.midap>=0 ? ((get(idx.midap)||'')+'').trim() : '',
+      state: idx.state>=0 ? normState(get(idx.state)) : '',
+      pincode: idx.pincode>=0 ? normPin(get(idx.pincode)) : ''
     });
   });
   // Data health report: tells you exactly what was read and what was ignored, so numbers can be trusted
-  const optional = { profit:'Profit', salesperson:'Salesperson', ordertype:'Order Types', tax:'Tax Amount', customer:'Customer Name', invoice:'Invoice#' };
+  const optional = { profit:'Profit', salesperson:'Salesperson', ordertype:'Order Types', tax:'Tax Amount', customer:'Customer Name', invoice:'Invoice#', state:'Place of Supply', pincode:'Billing Code' };
   DATA_HEALTH = {
     sheetRows: (json.table.rows||[]).length,
     loaded: rows.length,

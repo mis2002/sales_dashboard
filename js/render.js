@@ -176,6 +176,7 @@ function renderAll(){
   safe('Top customers', renderTable);
   safe('BI Insights', renderBI);
   safe('MIS Scoring', renderMisScoring);
+  safe('Customer insights', renderCustomerInsights);
 }
 
 /* ---------------------- MIS Sales Report ---------------------- */

@@ -11,6 +11,8 @@ js/format.js                       ← ₹ formats, colours, small helpers
 js/data.js                         ← fetch Google Sheet + ALL calculations
 js/charts.js                       ← chart theme, data labels, chart builders
 js/render.js                       ← cards, tables, MIS, BI, scoring screens
+js/customer-calc.js                ← Customers tab: segments, states, pin codes, insights (calculations)
+js/customer-view.js                ← Customers tab: charts, tables, customer popup, CSV export
 js/app.js                          ← buttons, filters, admin panel, loading
 ```
 
@@ -34,3 +36,17 @@ File names case-sensitive hain: `js/app.js` ≠ `JS/App.js`.
 | Sheet ID, gid, refresh time | `js/config.js` (ya Admin panel, password 0000) |
 | Koi calculation / formula | `js/data.js` (aggregation) ya `js/render.js` (MIS scoring) |
 | Graph ka look / labels | `js/charts.js` |
+
+## Customers tab (new)
+Uses the **Place of Supply** (column L) and **Billing Code** (column M, pin code) columns.
+Column names can also be "State" / "Pin code" — both are recognised. "DELHI", "Delhi (07)" etc. are cleaned to "Delhi".
+
+Segments (recalculated for the selected period end):
+- Champion: 6+ order days, ordered in last 30 days, top 20% by lifetime value
+- Loyal: 4+ order days, active in last 45 days
+- Promising: active in last 45 days
+- New: first ever order within last 30 days
+- At risk: reordered before, now quiet for more than 2× their usual gap (minimum 30 days)
+- Needs attention: rare orders, 45–90 days quiet
+- Lost: 90+ days without an order
+Change the day limits in `segmentOf()` inside `js/customer-calc.js`.

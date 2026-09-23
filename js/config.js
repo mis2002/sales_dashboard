@@ -33,7 +33,19 @@ const PANEL_REGISTRY = [
   { key:'panel-bi-flag',            label:'BI Insights — Zero/Low-Profit flags' },
   { key:'panel-bi-efficiency',      label:'BI Insights — Salesperson Efficiency' },
   { key:'panel-bi-taxtrend',        label:'BI Insights — Tax Collected trend' },
-  { key:'panel-bi-outlier',         label:'BI Insights — Unusual Invoices' }
+  { key:'panel-bi-outlier',         label:'BI Insights — Unusual Invoices' },
+  { key:'panel-cust-insights',      label:'Customers — Key insights' },
+  { key:'panel-cust-state',         label:'Customers — Sales by state chart' },
+  { key:'panel-cust-region',        label:'Customers — Sales by region' },
+  { key:'panel-cust-statetable',    label:'Customers — State-wise report' },
+  { key:'panel-cust-segments',      label:'Customers — Segments chart' },
+  { key:'panel-cust-conc',          label:'Customers — Concentration' },
+  { key:'panel-cust-segtable',      label:'Customers — Segment actions' },
+  { key:'panel-cust-nvr',           label:'Customers — New vs returning' },
+  { key:'panel-cust-risk',          label:'Customers — At-risk call list' },
+  { key:'panel-cust-lowmargin',     label:'Customers — Big customers, low margin' },
+  { key:'panel-cust-pins',          label:'Customers — Top pin codes' },
+  { key:'panel-cust-table',         label:'Customers — Full customer report' }
 ];
 
 const DEFAULT_ADMIN_SETTINGS = {

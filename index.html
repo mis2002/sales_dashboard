@@ -28,6 +28,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>
         <span>Scoring</span>
       </button>
+      <button class="sb-item" data-tab="customers" title="Customer insights">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>
+        <span>Customers</span>
+      </button>
     </nav>
     <div class="sb-foot">
       <button class="sb-item" id="adminBtn" title="Admin settings (password protected)">
@@ -501,6 +505,150 @@
         </div>
       </div><!-- /scoringTab -->
 
+      <div id="customersTab" style="display:none">
+        <div class="weekstrip-head">
+          <h2>Customer insights</h2>
+          <span class="desc" id="custPeriodNote"></span>
+        </div>
+        <div class="kpis" id="custKpis"></div>
+
+        <div class="panel" id="panel-cust-insights">
+          <div class="panel-head"><div>
+            <h2>Key insights</h2>
+            <p class="desc">Written automatically from your data for the selected filters</p>
+          </div></div>
+          <div class="insight-grid" id="custInsights"></div>
+        </div>
+
+        <div class="grid3 grid-wide-left">
+          <div class="panel" id="panel-cust-state">
+            <div class="panel-head"><div>
+              <h2>Sales by state (Place of Supply)</h2>
+              <p class="desc" id="custStateDesc"></p>
+            </div></div>
+            <div class="chart-box" id="custStateBox"><div class="chart-inner"><canvas id="custStateChart"></canvas></div></div>
+          </div>
+          <div class="panel" id="panel-cust-region">
+            <div class="panel-head"><div>
+              <h2>Sales by region</h2>
+              <p class="desc">States grouped into North, West, South, East, Central, North-East</p>
+            </div></div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="custRegionChart"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-cust-statetable">
+          <div class="panel-head"><div>
+            <h2>State-wise report</h2>
+            <p class="desc">Every state in the selected period, with margin and sales per customer</p>
+          </div></div>
+          <div class="table-scroll" style="max-height:420px">
+            <table><thead><tr><th>#</th><th>State</th><th>Region</th><th style="text-align:right">Customers</th><th style="text-align:right">Invoices</th>
+              <th style="text-align:right">Net sales</th><th style="text-align:right">Share</th><th style="text-align:right">Profit</th><th style="text-align:right">GP %</th><th style="text-align:right">Sales / customer</th></tr></thead>
+            <tbody id="custStateTable"></tbody></table>
+          </div>
+        </div>
+
+        <div class="grid3">
+          <div class="panel" id="panel-cust-segments">
+            <div class="panel-head"><div>
+              <h2>Customer segments</h2>
+              <p class="desc">Based on how recently, how often and how much each customer buys</p>
+            </div></div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="custSegmentChart"></canvas></div></div>
+          </div>
+          <div class="panel" id="panel-cust-conc">
+            <div class="panel-head"><div>
+              <h2>Customer concentration</h2>
+              <p class="desc" id="custConcDesc"></p>
+            </div></div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="custConcChart"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-cust-segtable">
+          <div class="panel-head"><div>
+            <h2>What to do with each segment</h2>
+            <p class="desc">Click a row to see those customers in the full report below</p>
+          </div></div>
+          <div class="table-scroll">
+            <table><thead><tr><th>Segment</th><th style="text-align:right">Customers</th><th style="text-align:right">Lifetime sales</th><th style="text-align:right">This period</th><th>Meaning and action</th></tr></thead>
+            <tbody id="custSegmentTable"></tbody></table>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-cust-nvr">
+          <div class="panel-head"><div>
+            <h2>New vs returning customers by month</h2>
+            <p class="desc">Customer counts per month (last 12 months up to the selected period). Hover for sales split.</p>
+          </div></div>
+          <div class="chart-box"><div class="chart-inner"><canvas id="custNvrChart"></canvas></div></div>
+        </div>
+
+        <div class="grid3">
+          <div class="panel" id="panel-cust-risk">
+            <div class="panel-head"><div>
+              <h2>At-risk call list</h2>
+              <p class="desc" id="custRiskDesc"></p>
+            </div></div>
+            <div class="table-scroll">
+              <table style="min-width:620px"><thead><tr><th>Customer</th><th>Salesperson</th><th>State</th><th style="text-align:right">Last order</th><th style="text-align:right">Quiet for</th><th style="text-align:right">Usual gap</th><th style="text-align:right">Lifetime</th></tr></thead>
+              <tbody id="custRiskTable"></tbody></table>
+            </div>
+          </div>
+          <div class="panel" id="panel-cust-lowmargin">
+            <div class="panel-head"><div>
+              <h2>Big customers, low margin</h2>
+              <p class="desc" id="custLowDesc"></p>
+            </div></div>
+            <div class="table-scroll">
+              <table style="min-width:580px"><thead><tr><th>Customer</th><th>Salesperson</th><th style="text-align:right">Net sales</th><th style="text-align:right">Profit</th><th style="text-align:right">GP %</th><th style="text-align:right">Profit gap vs avg</th></tr></thead>
+              <tbody id="custLowTable"></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-cust-pins">
+          <div class="panel-head"><div>
+            <h2>Top pin codes</h2>
+            <p class="desc" id="custPinDesc"></p>
+          </div></div>
+          <div class="table-scroll">
+            <table><thead><tr><th>#</th><th>Pin code</th><th>State</th><th style="text-align:right">Customers</th><th style="text-align:right">Invoices</th><th style="text-align:right">Net sales</th><th style="text-align:right">Share</th><th style="text-align:right">GP %</th><th>Biggest customer</th></tr></thead>
+            <tbody id="custPinTable"></tbody></table>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-cust-table">
+          <div class="panel-head">
+            <div>
+              <h2>Full customer report</h2>
+              <p class="desc"><span id="custTableCount"></span> · click any customer for their full history, click a column to sort</p>
+            </div>
+            <button class="util-btn" id="custExport">Export CSV</button>
+          </div>
+          <div class="tbl-tools">
+            <input type="search" id="custSearch" placeholder="Search customer, pin code or salesperson…" aria-label="Search customers">
+            <select id="custStateFilter" aria-label="Filter by state"></select>
+            <select id="custSegFilter" aria-label="Filter by segment"></select>
+          </div>
+          <div class="table-scroll" style="max-height:640px">
+            <table style="min-width:1250px">
+              <thead><tr id="custTableHead">
+                <th data-sort="name">Customer</th><th>Segment</th><th data-sort="state">State / pin</th><th>Salesperson</th>
+                <th data-sort="perNet" style="text-align:right">Period sales</th><th data-sort="perGp" style="text-align:right">Period GP %</th>
+                <th data-sort="growth" style="text-align:right">Trend</th><th data-sort="lifeNet" style="text-align:right">Lifetime sales</th>
+                <th data-sort="invoices" style="text-align:right">Invoices</th><th data-sort="aov" style="text-align:right">Avg invoice</th>
+                <th data-sort="first" style="text-align:right">First order</th><th data-sort="recency" style="text-align:right">Days since order</th>
+                <th data-sort="gap" style="text-align:right">Reorder gap</th>
+              </tr></thead>
+              <tbody id="custTableBody"></tbody>
+            </table>
+          </div>
+          <div style="text-align:center;margin-top:12px"><button class="util-btn" id="custShowMore">Show more</button></div>
+        </div>
+      </div><!-- /customersTab -->
+
       <footer>Weeks run Monday–Saturday. Values in INR. Data pulled live from your Google Sheet.<span id="dataHealth"></span></footer>
     </div>
   </div>
@@ -525,6 +673,23 @@
   </div>
 </div>
 
+
+<div class="modal-overlay" id="custDetailOverlay">
+  <div class="modal-box" style="max-width:860px">
+    <div class="modal-head" style="align-items:flex-start">
+      <div><h3 id="custDetailTitle">Customer</h3><div id="custDetailMeta" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
+      <button class="modal-close" id="custDetailClose" aria-label="Close">✕</button>
+    </div>
+    <div class="kpi-mini-row" id="custDetailKpis" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"></div>
+    <h3 class="score-h3" style="margin-top:4px">Monthly net sales</h3>
+    <div class="chart-box" style="height:220px"><div class="chart-inner"><canvas id="custDetailChart"></canvas></div></div>
+    <h3 class="score-h3">Latest invoices</h3>
+    <div class="table-scroll" style="max-height:300px">
+      <table style="min-width:600px"><thead><tr><th>Date</th><th>Invoice</th><th>Salesperson</th><th>Type</th><th style="text-align:right">Net</th><th style="text-align:right">Profit</th><th style="text-align:right">GP %</th></tr></thead>
+      <tbody id="custDetailInv"></tbody></table>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="adminModalOverlay">
   <div class="modal-box">
     <div class="modal-head">
@@ -645,6 +810,8 @@
 <script src="js/data.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/render.js"></script>
+<script src="js/customer-calc.js"></script>
+<script src="js/customer-view.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

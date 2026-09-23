@@ -40,6 +40,7 @@ function isStackedChart(chart){
 }
 function isLineDataset(ctx){ return (ctx.dataset.type || ctx.chart.config.type) === 'line'; }
 function manyPoints(chart){
+  if(chart.options && chart.options.indexAxis==='y') return false;   // horizontal bars: labels sit to the right, never rotate
   const n = pointCount(chart);
   const per = (chart.chartArea ? chart.chartArea.width : chart.width) / Math.max(n,1) / Math.max(chart.getVisibleDatasetCount(),1);
   return n > 1 && per < 40;    // bars narrower than ~40px can't fit a horizontal ₹ label → rotate
