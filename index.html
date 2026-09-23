@@ -132,7 +132,22 @@
             <input type="date" id="rangeStart"><span>to</span><input type="date" id="rangeEnd">
           </div>
         </div>
-        <span class="mb-note">Filters apply to every chart and table</span>
+        <div class="filter-block">
+          <span class="fb-label">Quick range <span class="muted">(based on latest invoice date)</span></span>
+          <div class="seg-toggle" id="quickToggle">
+            <button data-q="thisWeek">This week</button>
+            <button data-q="lastWeek">Last week</button>
+            <button data-q="thisMonth">This month</button>
+            <button data-q="lastMonth">Last month</button>
+            <button data-q="last30">Last 30 days</button>
+            <button data-q="fy">This FY</button>
+            <button data-q="all">All time</button>
+          </div>
+        </div>
+        <div class="filter-block fb-right">
+          <span class="fb-label">Export</span>
+          <button class="util-btn" id="exportInvoicesBtn" title="Download every invoice in the current filter">Export filtered invoices</button>
+        </div>
       </div>
 
       <div id="mainTab">
@@ -146,6 +161,14 @@
         </div>
 
         <div class="kpis" id="kpiRow"></div>
+
+        <div class="panel" id="panel-main-insights">
+          <div class="panel-head"><div>
+            <h2>Key insights</h2>
+            <p class="desc">Sales story for the selected filters, written from your data. Click an insight to see the invoices behind it.</p>
+          </div></div>
+          <div class="insight-grid" id="mainInsights"></div>
+        </div>
 
         <div class="panel mis-panel" id="panel-mis">
           <div class="mis-header">
@@ -307,6 +330,14 @@
 
         <div class="kpi-mini-row" id="biTopKpis"></div>
 
+        <div class="panel" id="panel-bi-insights">
+          <div class="panel-head"><div>
+            <h2>Profit insights</h2>
+            <p class="desc">Margin, leakage and efficiency findings. Click an insight to drill in.</p>
+          </div></div>
+          <div class="insight-grid" id="biInsights"></div>
+        </div>
+
         <div class="grid3">
           <div class="panel" id="panel-bi-revtaxprofit">
             <div class="panel-head"><div>
@@ -414,7 +445,15 @@
       </div><!-- /biTab -->
 
       <div id="scoringTab" style="display:none">
-        <div class="panel mis-panel">
+
+        <div class="panel" id="panel-score-insights">
+          <div class="panel-head"><div>
+            <h2>Scoring insights</h2>
+            <p class="desc">Plan vs actual summary for the scoring period. Click a name to open their profile.</p>
+          </div></div>
+          <div class="insight-grid" id="scoreInsights"></div>
+        </div>
+        <div class="panel mis-panel" id="panel-scoring">
           <div class="mis-header">
             <div>
               <div class="mis-title">MIS Scoring — <span id="scorePeriodLabel">…</span></div>
@@ -690,6 +729,54 @@
     </div>
   </div>
 </div>
+<div class="modal-overlay" id="invListOverlay">
+  <div class="modal-box" style="max-width:1040px">
+    <div class="modal-head" style="align-items:flex-start">
+      <div><h3 id="invListTitle">Invoices</h3><p class="desc" id="invListSub" style="margin:4px 0 0;font-size:12px;color:var(--ink-dim)"></p>
+        <div id="invListLinks" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div></div>
+      <button class="modal-close" id="invListClose" aria-label="Close">✕</button>
+    </div>
+    <div class="kpi-mini-row" id="invListKpis" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))"></div>
+    <div class="tbl-tools">
+      <div class="seg-toggle" id="invListGroup">
+        <button data-g="inv" class="active">Invoices</button><button data-g="cust">By customer</button>
+        <button data-g="sp">By salesperson</button><button data-g="state">By state</button><button data-g="type">By order type</button>
+      </div>
+      <input type="search" id="invListSearch" placeholder="Search customer, invoice, salesperson, state, pin…" aria-label="Search invoices">
+      <button class="util-btn" id="invListExport">Export CSV</button>
+    </div>
+    <div class="table-scroll" style="max-height:52vh">
+      <table id="invListTable" style="min-width:900px"><thead id="invListHead"></thead><tbody id="invListBody"></tbody></table>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px;flex-wrap:wrap">
+      <span class="muted" id="invListCount"></span>
+      <button class="util-btn small" id="invListMore">Show more</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="spDetailOverlay">
+  <div class="modal-box" style="max-width:920px">
+    <div class="modal-head" style="align-items:flex-start">
+      <div><h3 id="spDetailTitle">Salesperson</h3><div id="spDetailMeta" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
+      <button class="modal-close" id="spDetailClose" aria-label="Close">✕</button>
+    </div>
+    <div class="kpi-mini-row" id="spDetailKpis" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"></div>
+    <div class="insight-grid" id="spDetailNotes" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-bottom:12px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <h3 class="score-h3" id="spDetailChartTitle" style="margin:4px 0">Net sales</h3>
+      <button class="util-btn small" id="spDetailAll">View all invoices →</button>
+    </div>
+    <div class="chart-box" style="height:220px"><div class="chart-inner"><canvas id="spDetailChart"></canvas></div></div>
+    <div class="grid3" style="margin-top:12px">
+      <div><h3 class="score-h3">Top customers</h3>
+        <div class="table-scroll"><table style="min-width:0"><thead><tr><th>Customer</th><th style="text-align:right">Inv.</th><th style="text-align:right">Net</th><th style="text-align:right">Share</th><th style="text-align:right">GP %</th></tr></thead><tbody id="spDetailCust"></tbody></table></div></div>
+      <div><h3 class="score-h3">By state</h3>
+        <div class="table-scroll"><table style="min-width:0"><thead><tr><th>State</th><th style="text-align:right">Customers</th><th style="text-align:right">Net</th><th style="text-align:right">Share</th></tr></thead><tbody id="spDetailStates"></tbody></table></div></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="adminModalOverlay">
   <div class="modal-box">
     <div class="modal-head">
@@ -812,6 +899,8 @@
 <script src="js/render.js"></script>
 <script src="js/customer-calc.js"></script>
 <script src="js/customer-view.js"></script>
+<script src="js/interact.js"></script>
+<script src="js/page-insights.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

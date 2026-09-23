@@ -77,7 +77,8 @@ function renderCustLocation(M){
     const top = M.states.slice(0, 12);
     document.getElementById('custStateDesc').textContent = `Top ${top.length} of ${M.states.length} states by net sales, selected period`;
     box.style.height = Math.max(260, top.length*30 + 50) + 'px';
-    makeChart('custState','custStateChart', { type:'bar',
+    makeChart('custState','custStateChart', { drill:(di,i)=>({ title:`${top[i].state} — invoices`, rows: currentRows().filter(r=>(r.state||'Not given')===top[i].state) }),
+      type:'bar',
       data:{ labels: top.map(s=>s.state), datasets:[Object.assign({ label:'Net sales', data: top.map(s=>s.net),
         backgroundColor: top.map((s,i)=> s.state==='Not given' ? '#DAD6E6' : i===0 ? '#6C5CE7' : i<3 ? '#8E81EE' : '#C3BBF7') }, { borderRadius:6, borderSkipped:false, maxBarThickness:22 })] },
       options: hbarOpts(evts=>{ const s = top[evts[0].dataIndex];
@@ -86,16 +87,17 @@ function renderCustLocation(M){
   }
   // state table (all states)
   document.getElementById('custStateTable').innerHTML = M.states.map((s,i)=>`
-    <tr><td>${i+1}</td><td class="name">${s.state}</td><td>${regionOf(s.state==='Not given'?'':s.state,'')}</td>
+    <tr class="clickable" data-state="${escAttr(s.state)}"><td>${i+1}</td><td class="name">${s.state}</td><td>${regionOf(s.state==='Not given'?'':s.state,'')}</td>
       <td style="text-align:right">${fmtNum(s.custCount)}</td><td style="text-align:right">${fmtNum(s.invoices)}</td>
-      <td style="text-align:right;font-weight:600">${fmtINR(s.net)}</td><td style="text-align:right">${fmtPct(s.share)}</td>
-      <td style="text-align:right">${fmtINR(s.profit)}</td><td style="text-align:right">${fmtPct(s.gp)}</td>
-      <td style="text-align:right">${fmtINR(s.custCount ? s.net/s.custCount : 0)}</td></tr>`).join('')
+      <td style="text-align:right;font-weight:600">${money(s.net)}</td><td style="text-align:right">${fmtPct(s.share)}</td>
+      <td style="text-align:right">${money(s.profit)}</td><td style="text-align:right">${fmtPct(s.gp)}</td>
+      <td style="text-align:right">${money(s.custCount ? s.net/s.custCount : 0)}</td></tr>`).join('')
     || `<tr><td colspan="10" class="empty-note">No data in this filter.</td></tr>`;
 
   const regs = M.regions;
   const regColors = { 'North':'#6C5CE7','West':'#F6A623','South':'#3FB8E0','East':'#EF5466','Central':'#1FB286','North-East':'#443AA8','Not mapped':'#A4A2C0' };
-  makeChart('custRegion','custRegionChart', { type:'doughnut',
+  makeChart('custRegion','custRegionChart', { drill:(di,i)=>({ title:`${regs[i].region} region — invoices`, rows: currentRows().filter(r=>regionOf(r.state, r.pincode)===regs[i].region) }),
+    type:'doughnut',
     data:{ labels: regs.map(r=>r.region), datasets:[{ data: regs.map(r=>r.net), backgroundColor: regs.map(r=>regColors[r.region]||'#A4A2C0'), borderColor:'#fff', borderWidth:4, hoverOffset:6 }] },
     options:{ responsive:true, maintainAspectRatio:false, cutout:'55%',
       plugins:{ legend:{position:'bottom',labels:{color:THEME.ink,font:{size:11},usePointStyle:true,pointStyle:'circle'}}, datalabels: pieDL(),
@@ -106,7 +108,8 @@ function renderCustLocation(M){
 
 function renderCustSegments(M){
   const segs = M.segments.filter(s=>s.count>0);
-  makeChart('custSegment','custSegmentChart', { type:'doughnut',
+  makeChart('custSegment','custSegmentChart', { drill:(di,i)=>({ action:()=>{ custTable.segment = segs[i].name; custTable.limit = 50; document.getElementById('custSegFilter').value = segs[i].name; renderCustTable(); document.getElementById('panel-cust-table').scrollIntoView({behavior:'smooth'}); } }),
+    type:'doughnut',
     data:{ labels: segs.map(s=>s.name), datasets:[{ data: segs.map(s=>s.count), backgroundColor: segs.map(s=>s.color), borderColor:'#fff', borderWidth:4, hoverOffset:6 }] },
     options:{ responsive:true, maintainAspectRatio:false, cutout:'55%',
       plugins:{ legend:{position:'bottom',labels:{color:THEME.ink,font:{size:11},usePointStyle:true,pointStyle:'circle'}},
@@ -117,7 +120,7 @@ function renderCustSegments(M){
   document.getElementById('custSegmentTable').innerHTML = M.segments.map(s=>`
     <tr class="clickable" data-seg="${s.name}">
       <td>${segBadge(s.name)}</td><td style="text-align:right">${fmtNum(s.count)}</td>
-      <td style="text-align:right">${fmtINR(s.lifeNet)}</td><td style="text-align:right">${fmtINR(s.perNet)}</td>
+      <td style="text-align:right">${money(s.lifeNet)}</td><td style="text-align:right">${money(s.perNet)}</td>
       <td class="cell-wrap">${s.desc}<br><span class="act">→ ${s.action}</span></td></tr>`).join('');
   document.querySelectorAll('#custSegmentTable tr[data-seg]').forEach(tr=>tr.addEventListener('click', ()=>{
     custTable.segment = tr.dataset.seg; custTable.limit = 50;
@@ -129,7 +132,8 @@ function renderCustSegments(M){
 
 function renderCustConcentration(M){
   const C = M.concentration;
-  makeChart('custConc','custConcChart', { type:'bar',
+  makeChart('custConc','custConcChart', { drill:(di,i)=>{ const n = [1,5,10,20,50,Infinity][i]; const names = new Set(M.active.slice(0,n).map(c=>c.name)); return { title:`${C[i].label} customers — invoices`, rows: currentRows().filter(r=>names.has(r.customer)) }; },
+    type:'bar',
     data:{ labels: C.map(c=>c.label), datasets:[Object.assign({ label:'Share of net sales', data: C.map(c=>c.pct),
       backgroundColor: C.map((c,i)=> i===C.length-1 ? '#DAD6F0' : ['#443AA8','#6C5CE7','#8E81EE','#A99EF2','#C3BBF7'][i]) }, barStyle)] },
     options: baseOpts({ y:{ ticks:{ callback:v=> v<=100 ? v+'%' : '' }, afterDataLimits: s=>{ s.max = 115; s.min = 0; } } }, false, false, evts=>{
@@ -143,7 +147,8 @@ function renderCustNewReturning(M){
   const d = M.nvr;
   autoFitChartWidth('custNvrChart', d.length, 60, 0);
   const bs = { borderRadius:6, borderSkipped:false, maxBarThickness:56, borderColor:'#fff', borderWidth:{top:2} };
-  makeChart('custNvr','custNvrChart', { type:'bar',
+  makeChart('custNvr','custNvrChart', { drill:(di,i)=>{ const k = d[i].key; const firstM = {}; ALL_ROWS.forEach(r=>{ if(!firstM[r.customer] || r.monthKey < firstM[r.customer]) firstM[r.customer] = r.monthKey; }); const isNew = di===1; return { title:`${isNew?'New':'Returning'} customers — ${d[i].label}`, rows: baseFiltered(ALL_ROWS).filter(r=>r.monthKey===k && ((firstM[r.customer]===k)===isNew)) }; },
+    type:'bar',
     data:{ labels: d.map(x=>x.label), datasets:[
       Object.assign({ label:'Returning customers', data:d.map(x=>x.nRet), backgroundColor:'#6C5CE7' }, bs),
       Object.assign({ label:'New customers', data:d.map(x=>x.nNew), backgroundColor:'#F6A623' }, bs)
@@ -166,7 +171,7 @@ function renderCustActionLists(M){
       <td style="text-align:right">${fmtDate(c.last)}</td>
       <td style="text-align:right;color:var(--coral);font-weight:700">${c.recency}d</td>
       <td style="text-align:right">${fmtDays(c.avgGap)}</td>
-      <td style="text-align:right;font-weight:600">${fmtINR(c.life.net)}</td></tr>`).join('')
+      <td style="text-align:right;font-weight:600">${money(c.life.net)}</td></tr>`).join('')
     || `<tr><td colspan="7" class="empty-note">Nothing overdue 🎉</td></tr>`;
 
   const low = M.lowMarginBig.slice(0, 10);
@@ -174,9 +179,9 @@ function renderCustActionLists(M){
   document.getElementById('custLowTable').innerHTML = low.map(c=>`
     <tr class="clickable" data-cust="${escAttr(c.name)}">
       <td class="name" title="${escAttr(c.name)}">${c.name}</td><td>${c.salesperson}</td>
-      <td style="text-align:right;font-weight:600">${fmtINR(c.per.net)}</td><td style="text-align:right">${fmtINR(c.per.profit)}</td>
+      <td style="text-align:right;font-weight:600">${money(c.per.net)}</td><td style="text-align:right">${money(c.per.profit)}</td>
       <td style="text-align:right;color:var(--coral);font-weight:700">${fmtPct(c.perGp)}</td>
-      <td style="text-align:right">${fmtINR(c.per.net*(M.overallGp-c.perGp)/100)}</td></tr>`).join('')
+      <td style="text-align:right">${money(c.per.net*(M.overallGp-c.perGp)/100)}</td></tr>`).join('')
     || `<tr><td colspan="6" class="empty-note">All large customers are at or above average margin.</td></tr>`;
   bindCustRowClicks('#custRiskTable'); bindCustRowClicks('#custLowTable');
 }
@@ -187,9 +192,9 @@ function renderCustPins(M){
     ? `Top ${pins.length} of ${fmtNum(M.pins.length)} pin codes by net sales (from the Billing Code column)`
     : 'No valid 6-digit Billing Code values found in this filter.';
   document.getElementById('custPinTable').innerHTML = pins.map((p,i)=>`
-    <tr><td>${i+1}</td><td style="font-weight:700;font-variant-numeric:tabular-nums">${p.pin}</td><td>${p.state}</td>
+    <tr class="clickable" data-pin="${p.pin}"><td>${i+1}</td><td style="font-weight:700;font-variant-numeric:tabular-nums">${p.pin}</td><td>${p.state}</td>
       <td style="text-align:right">${fmtNum(p.custCount)}</td><td style="text-align:right">${fmtNum(p.invoices)}</td>
-      <td style="text-align:right;font-weight:600">${fmtINR(p.net)}</td><td style="text-align:right">${fmtPct(p.share)}</td>
+      <td style="text-align:right;font-weight:600">${money(p.net)}</td><td style="text-align:right">${fmtPct(p.share)}</td>
       <td style="text-align:right">${fmtPct(p.gp)}</td><td class="name" title="${escAttr(p.topCustomer)}">${p.topCustomer}</td></tr>`).join('')
     || `<tr><td colspan="9" class="empty-note">No pin code data.</td></tr>`;
 }
@@ -227,12 +232,12 @@ function renderCustTable(){
       <td>${segBadge(c.segment)}</td>
       <td>${c.state||'—'}${c.pincode?`<br><span class="muted">${c.pincode}</span>`:''}</td>
       <td>${c.salesperson}</td>
-      <td style="text-align:right;font-weight:600">${fmtINR(c.per.net)}</td>
+      <td style="text-align:right;font-weight:600">${money(c.per.net)}</td>
       <td style="text-align:right">${fmtPct(c.perGp)}</td>
       <td style="text-align:right">${trendCell(c)}</td>
-      <td style="text-align:right">${fmtINR(c.life.net)}</td>
+      <td style="text-align:right">${money(c.life.net)}</td>
       <td style="text-align:right">${fmtNum(c.life.invoices)}</td>
-      <td style="text-align:right">${fmtINR(c.aov)}</td>
+      <td style="text-align:right">${money(c.aov)}</td>
       <td style="text-align:right">${fmtDate(c.firstEver)}</td>
       <td style="text-align:right">${c.recency===null?'—':c.recency+'d'}</td>
       <td style="text-align:right">${fmtDays(c.avgGap)}</td>
@@ -244,9 +249,7 @@ function renderCustTable(){
   });
   bindCustRowClicks('#custTableBody');
 }
-function bindCustRowClicks(sel){
-  document.querySelectorAll(`${sel} tr[data-cust]`).forEach(tr=>tr.addEventListener('click', ()=>openCustomerDetail(tr.dataset.cust)));
-}
+function bindCustRowClicks(){ /* row clicks are handled centrally in interact.js */ }
 function exportCustCSV(){
   const L = custFilteredList();
   const head = ['Customer','Segment','State','Pin code','Region','Salesperson','Period net sales','Period profit','Period GP %','Trend %','Lifetime net sales','Lifetime profit','Invoices','Avg invoice','First order','Last order','Days since last order','Avg days between orders'];
@@ -283,14 +286,15 @@ function openCustomerDetail(name){
     + `<div class="insight info" style="grid-column:1/-1"><span class="ins-ico">→</span><p><b>${c.segment}:</b> ${SEGMENTS[c.segment].action}</p></div>`;
   document.getElementById('custDetailInv').innerHTML = rows.slice(0, 25).map(r=>`
     <tr><td>${fmtDate(r.date)}</td><td>${r.invoice||'—'}</td><td>${r.salesperson}</td><td><span class="tag ${r.ordertype.toLowerCase()}">${r.ordertype}</span></td>
-      <td style="text-align:right">${fmtINR(r.net)}</td><td style="text-align:right">${fmtINR(r.profit)}</td>
+      <td style="text-align:right">${money(r.net)}</td><td style="text-align:right">${money(r.profit)}</td>
       <td style="text-align:right">${fmtPct(r.net ? r.profit/r.net*100 : 0)}</td></tr>`).join('');
-  document.getElementById('custDetailOverlay').style.display = 'flex';
+  showModal('custDetailOverlay');
   const mk = Object.keys(c.months).sort();
   const labels = mk.map(k=>{ const m = MONTHS.find(x=>x.key===k); return m ? m.label.replace(/^(\w{3})\w*/, '$1') : k; });
   setTimeout(()=>{
     autoFitChartWidth('custDetailChart', mk.length, 56, 0);
-    makeChart('custDetail','custDetailChart', { type:'bar',
+    makeChart('custDetail','custDetailChart', { drill:(di,i)=>({ title:`${c.name} — ${labels[i]}`, rows: rows.filter(r=>r.monthKey===mk[i]) }),
+      type:'bar',
       data:{ labels, datasets:[Object.assign({ label:'Net sales', data: mk.map(k=>c.months[k]), backgroundColor:'#6C5CE7' }, barStyle)] },
       options: baseOpts({ y:{ ticks:{ callback:v=>fmtINRShort(v) } } }, false, false, evts=>[labels[evts[0].dataIndex], `Net sales: ${fmtINR(c.months[mk[evts[0].dataIndex]])}`], fmtINRShort)
     });
@@ -313,5 +317,4 @@ function openCustomerDetail(name){
   }));
   $('custDetailClose').addEventListener('click', ()=>{ $('custDetailOverlay').style.display='none'; });
   $('custDetailOverlay').addEventListener('click', e=>{ if(e.target.id==='custDetailOverlay') e.target.style.display='none'; });
-  document.addEventListener('keydown', e=>{ if(e.key==='Escape') $('custDetailOverlay').style.display='none'; });
 })();

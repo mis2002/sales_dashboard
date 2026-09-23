@@ -68,7 +68,7 @@ function renderWeekStrip(){
     const prev = i>0 ? aggs[i-1] : null;
     const delta = prev && prev[m] ? ((agg[m]-prev[m])/prev[m]*100) : null;
     const c = PERIOD_COLORS[i % PERIOD_COLORS.length];
-    return `<div class="wk-card" style="--wc:${c};--wc-soft:${hexSoft(c,.14)}">
+    return `<div class="wk-card clickable" data-week="${w.key}" title="Click to open this week" style="--wc:${c};--wc-soft:${hexSoft(c,.14)}">
       <div class="wk-top"><div class="wk-ico">W${w.index}</div>
         <div><div class="wk-title">${w.label}</div><div class="wk-range">${w.range}</div></div></div>
       <div class="wk-net">${fmtINR(agg[m])}</div>
@@ -103,6 +103,7 @@ function renderGrowthTable(){
   const otLabel = state.ordertype==='ALL' ? '' : `, ${state.ordertype} only`;
   const rows = currentRows();
   const buckets = buildPeriodBuckets(rows, state.growthGran);
+  GROWTH_CTX = { rows, buckets };
   const granLower = buckets.granularity.toLowerCase();
   document.getElementById('growthTitle').textContent = `Salesperson-wise ${granLower} growth — ${mi.label}${otLabel}`;
   document.getElementById('growthDesc').textContent = `${mi.label} per ${granLower.replace('ly','').replace('dai','day')}, with period-over-period change`;
@@ -125,10 +126,10 @@ function renderGrowthTable(){
   document.getElementById('growthTable').innerHTML = spData.map((r,i)=>{
     const cells = r.periodVals.map((v,idx)=>{
       const badge = idx===0 ? `<span class="growth-badge na">Start</span>` : growthBadge(r.growth[idx]);
-      return `<td><div class="growth-cell"><span class="amt">${fmtINR(v)}</span>${badge}</div></td>`;
+      return `<td data-pi="${idx}" title="Click to see these invoices"><div class="growth-cell"><span class="amt">${money(v)}</span>${badge}</div></td>`;
     }).join('');
-    return `<tr><td>${i+1}</td><td class="name" title="${escAttr(r.sp)}">${r.sp}</td>${cells}
-      <td style="text-align:right;font-weight:700">${fmtINR(r.total)}</td>
+    return `<tr class="clickable" data-sp="${escAttr(r.sp)}"><td>${i+1}</td><td class="name" title="${escAttr(r.sp)}">${r.sp}</td>${cells}
+      <td style="text-align:right;font-weight:700">${money(r.total)}</td>
       <td style="text-align:right">${r.overall===null?`<span class="growth-badge na">—</span>`:growthBadge(r.overall)}</td></tr>`;
   }).join('');
 }
@@ -142,11 +143,11 @@ function renderTable(){
   const maxVal = top.length ? Math.abs(top[0][mi.key]) || 1 : 1;
   document.getElementById('custTable').innerHTML = top.map((c,i)=>{
     const gpPct = c.net ? (c.profit/c.net*100) : 0;
-    return `<tr><td>${i+1}</td><td class="name" title="${escAttr(c.name)}">${c.name}</td>
+    return `<tr class="clickable" data-cust="${escAttr(c.name)}"><td>${i+1}</td><td class="name" title="${escAttr(c.name)}">${c.name}</td>
       <td><span class="tag ${(c.ordertype||'').toLowerCase()}">${c.ordertype||'—'}</span></td>
       <td>${c.salesperson||'—'}</td><td style="text-align:right">${fmtNum(c.invoices)}</td>
-      <td style="text-align:right;font-weight:600">${fmtINR(c[mi.key])}</td>
-      <td style="text-align:right">${fmtINR(c.profit)}</td>
+      <td style="text-align:right;font-weight:600">${money(c[mi.key])}</td>
+      <td style="text-align:right">${money(c.profit)}</td>
       <td style="text-align:right">${fmtPct(gpPct)}</td>
       <td style="min-width:90px"><div class="bar-mini"><i style="width:${(Math.abs(c[mi.key])/maxVal*100).toFixed(1)}%"></i></div></td></tr>`;
   }).join('') || `<tr><td colspan="9" class="empty-note">No customers in this filter.</td></tr>`;
@@ -177,6 +178,10 @@ function renderAll(){
   safe('BI Insights', renderBI);
   safe('MIS Scoring', renderMisScoring);
   safe('Customer insights', renderCustomerInsights);
+  safe('Main insights', renderMainInsights);
+  safe('BI insights', renderBIInsights);
+  safe('Scoring insights', renderScoringInsights);
+  safe('Clickable items', afterRenderAll);
 }
 
 /* ---------------------- MIS Sales Report ---------------------- */
@@ -225,11 +230,11 @@ function renderMisReport(){
   }).sort((a,b)=>b.total.net-a.total.net);
   const maxNet = spData.length ? (spData[0].total.net || 1) : 1;
   const rowsHtml = spData.map((r,i)=>`
-    <tr>
+    <tr class="clickable" data-sp="${escAttr(r.sp)}">
       <td class="mis-name">${r.sp}</td>
-      <td>${fmtNum(r.crr.invoices)}</td><td>${fmtINR(r.crr.net)}</td><td>${fmtINR(r.crr.profit)}</td>
-      <td>${fmtNum(r.nbd.invoices)}</td><td>${fmtINR(r.nbd.net)}</td><td>${fmtINR(r.nbd.profit)}</td>
-      <td>${fmtNum(r.total.invoices)}</td><td>${fmtINR(r.total.net)}</td><td>${fmtINR(r.total.profit)}</td>
+      <td>${fmtNum(r.crr.invoices)}</td><td>${money(r.crr.net)}</td><td>${money(r.crr.profit)}</td>
+      <td>${fmtNum(r.nbd.invoices)}</td><td>${money(r.nbd.net)}</td><td>${money(r.nbd.profit)}</td>
+      <td>${fmtNum(r.total.invoices)}</td><td>${money(r.total.net)}</td><td>${money(r.total.profit)}</td>
       <td>${misGrowthCell(r.growth)}</td>
       <td><div class="mis-rank-cell"><div class="mis-rank-bar" style="width:${Math.max(6, r.total.net/maxNet*60)}px"></div>${i+1}</div></td>
     </tr>`).join('');
@@ -240,9 +245,9 @@ function renderMisReport(){
   const grandGrowth = grandPrevNet ? ((grand.net-grandPrevNet)/grandPrevNet*100) : null;
   const grandHtml = `<tr class="mis-grand">
       <td class="mis-name">GRAND TOTAL</td>
-      <td>${fmtNum(grandCrr.invoices)}</td><td>${fmtINR(grandCrr.net)}</td><td>${fmtINR(grandCrr.profit)}</td>
-      <td>${fmtNum(grandNbd.invoices)}</td><td>${fmtINR(grandNbd.net)}</td><td>${fmtINR(grandNbd.profit)}</td>
-      <td>${fmtNum(grand.invoices)}</td><td>${fmtINR(grand.net)}</td><td>${fmtINR(grand.profit)}</td>
+      <td>${fmtNum(grandCrr.invoices)}</td><td>${money(grandCrr.net)}</td><td>${money(grandCrr.profit)}</td>
+      <td>${fmtNum(grandNbd.invoices)}</td><td>${money(grandNbd.net)}</td><td>${money(grandNbd.profit)}</td>
+      <td>${fmtNum(grand.invoices)}</td><td>${money(grand.net)}</td><td>${money(grand.profit)}</td>
       <td>${misGrowthCell(grandGrowth)}</td><td></td>
     </tr>`;
   document.getElementById('misTableBody').innerHTML = (rowsHtml || `<tr><td colspan="12" style="color:var(--ink-dim);text-align:center;padding:20px">No salespeople in this period.</td></tr>`) + grandHtml;
@@ -275,7 +280,7 @@ function renderBI(){
   document.getElementById('biRevDesc').textContent = `${buckets.granularity} view — how much of billed value is tax vs your actual margin`;
   autoFitChartWidth('biRevTaxProfit', periodLabels.length, 96, 0);
   const g3 = {borderRadius:6, borderSkipped:false, maxBarThickness:34};
-  makeChart('biRevTaxProfit','biRevTaxProfit', {
+  makeChart('biRevTaxProfit','biRevTaxProfit', { drill:(di,i)=>({ title:periodLabels[i], rows: rows.filter(buckets.defs[i].match) }),
     type:'bar',
     data:{ labels: periodLabels, datasets:[
       Object.assign({label:'Net sales', data:items.map(it=>it.agg.net), backgroundColor:'#6C5CE7'}, g3),
@@ -292,7 +297,7 @@ function renderBI(){
   destroyChart('biInvoiceCount');
   document.getElementById('biInvCountTitle').textContent = buckets.granularity + ' invoice count';
   autoFitChartWidth('biInvoiceCount', periodLabels.length, 44, 0);
-  makeChart('biInvoiceCount','biInvoiceCount', {
+  makeChart('biInvoiceCount','biInvoiceCount', { drill:(di,i)=>({ title:`Invoices — ${periodLabels[i]}`, rows: rows.filter(buckets.defs[i].match) }),
     type:'bar', data:{labels:periodLabels, datasets:[Object.assign({label:'Invoices', data:items.map(it=>it.agg.invoices), backgroundColor:'#3FB8E0'}, barStyle)]},
     options: baseOpts({y:{ticks:{precision:0}}, x:{ticks:{maxRotation:45,autoSkip:true,maxTicksLimit:40}}}, false, false, (evts)=>{
       const idx = evts[0].dataIndex;
@@ -303,7 +308,7 @@ function renderBI(){
   /* 3. Profit contribution by salesperson */
   destroyChart('biProfitPie');
   const spByProfit = agg.bySp.slice().sort((a,b)=>b.profit-a.profit).filter(s=>s.profit>0).slice(0, ADMIN.topSalespersonN);
-  makeChart('biProfitPie','biProfitPie', {
+  makeChart('biProfitPie','biProfitPie', { drill:(di,i)=>({ action:()=>openSalespersonDetail(spByProfit[i].salesperson) }),
     type:'doughnut',
     data:{ labels: spByProfit.map(s=>s.salesperson), datasets:[{data:spByProfit.map(s=>s.profit), backgroundColor:spByProfit.map((_,i)=>PALETTE[i%PALETTE.length]), borderColor:'#fff', borderWidth:4, hoverOffset:6}] },
     options:{ responsive:true, maintainAspectRatio:false, cutout:'52%', plugins:{ legend:{position:'bottom',labels:{color:THEME.ink,font:{size:10.5},boxWidth:10,usePointStyle:true,pointStyle:'circle'}},
@@ -315,7 +320,7 @@ function renderBI(){
   document.getElementById('biRankDesc').textContent = `Ranked by ${mi.label}, current filter`;
   const spSorted = agg.bySp.slice().sort((a,b)=>b[mi.key]-a[mi.key]);
   const top5 = spSorted.slice(0,5), bottom5 = spSorted.slice(-5).reverse();
-  const rankRow = (s,i)=>`<tr><td>${i+1}</td><td class="name">${s.salesperson}</td><td style="text-align:right">${fmtINR(s[mi.key])}</td><td style="text-align:right">${fmtNum(s.invoices)}</td></tr>`;
+  const rankRow = (s,i)=>`<tr class="clickable" data-sp="${escAttr(s.salesperson)}"><td>${i+1}</td><td class="name">${s.salesperson}</td><td style="text-align:right">${money(s[mi.key])}</td><td style="text-align:right">${fmtNum(s.invoices)}</td></tr>`;
   document.getElementById('biTop5').innerHTML = top5.map(rankRow).join('') || `<tr><td colspan="4" class="empty-note">No data.</td></tr>`;
   document.getElementById('biBottom5').innerHTML = bottom5.map(rankRow).join('') || `<tr><td colspan="4" class="empty-note">No data.</td></tr>`;
 
@@ -323,7 +328,7 @@ function renderBI(){
   destroyChart('biRepeatPie');
   const repeatNet = rows.filter(r=>r.ordertype==='CRR').reduce((s,r)=>s+r.net,0);
   const onceNet = rows.filter(r=>r.ordertype==='NBD').reduce((s,r)=>s+r.net,0);
-  makeChart('biRepeatPie','biRepeatPie', {
+  makeChart('biRepeatPie','biRepeatPie', { drill:(di,i)=>{ const ot = i===0?'CRR':'NBD'; return { title:`${ot} orders`, rows: rows.filter(r=>r.ordertype===ot) }; },
     type:'doughnut', data:{ labels:[`Repeat, CRR (${fmtNum(repeatCustCount)} customers)`, `New/one-time, NBD (${fmtNum(oneTimeCustCount)} customers)`], datasets:[{data:[repeatNet, onceNet], backgroundColor:[CRR_COLOR,NBD_COLOR], borderColor:'#fff', borderWidth:4, hoverOffset:6}] },
     options:{ responsive:true, maintainAspectRatio:false, cutout:'52%', plugins:{ legend:{position:'bottom',labels:{color:THEME.ink,font:{size:11},usePointStyle:true,pointStyle:'circle'}},
       datalabels: pieDL(),
@@ -334,7 +339,7 @@ function renderBI(){
   const marginCusts = agg.customers.filter(c=>c.invoices>=2 && c.net>0)
     .map(c=>({...c, gp: c.profit/c.net*100})).sort((a,b)=>b.gp-a.gp).slice(0,10);
   document.getElementById('biMarginTable').innerHTML = marginCusts.map((c,i)=>
-    `<tr><td>${i+1}</td><td class="name" title="${escAttr(c.name)}">${c.name}</td><td style="text-align:right">${fmtINR(c.net)}</td><td style="text-align:right">${fmtPct(c.gp)}</td></tr>`
+    `<tr class="clickable" data-cust="${escAttr(c.name)}"><td>${i+1}</td><td class="name" title="${escAttr(c.name)}">${c.name}</td><td style="text-align:right">${money(c.net)}</td><td style="text-align:right">${fmtPct(c.gp)}</td></tr>`
   ).join('') || `<tr><td colspan="4" class="empty-note">Need customers with 2+ invoices.</td></tr>`;
 
   /* 7. Profit % distribution */
@@ -346,7 +351,7 @@ function renderBI(){
   const bandCounts = bands.map(()=>0);
   rows.forEach(r=>{ const p = r.net ? (r.profit/r.net*100) : 0; const idx = bands.findIndex(b=>b.test(p)); if(idx>=0) bandCounts[idx]++; });
   autoFitChartWidth('biProfitDist', 0, 0, 0);
-  makeChart('biProfitDist','biProfitDist', {
+  makeChart('biProfitDist','biProfitDist', { drill:(di,i)=>({ title:`Invoices with ${bands[i].label} margin`, rows: rows.filter(r=>bands[i].test(r.net ? r.profit/r.net*100 : 0)) }),
     type:'bar', data:{ labels: bands.map(b=>b.label), datasets:[Object.assign({label:'Invoices', data:bandCounts, backgroundColor:['#EF5466','#A4A2C0','#F6A623','#FFC857','#1FB286','#6C5CE7']}, barStyle)] },
     options: baseOpts({y:{ticks:{precision:0}}}, false, false, (evts)=>{
       const idx = evts[0].dataIndex;
@@ -360,7 +365,7 @@ function renderBI(){
     : `${fmtNum(zeroProfitRows.length)} of ${fmtNum(rows.length)} invoices have zero or negative margin`;
   const worstFlags = zeroProfitRows.slice().sort((a,b)=>b.net-a.net).slice(0,10);
   document.getElementById('biFlagList').innerHTML = worstFlags.length
-    ? worstFlags.map(r=>`<div class="flag-row"><span>${r.invoice||'—'}, ${r.customer}</span><span class="amt">${fmtINR(r.net)} net, ${fmtINR(r.profit)} profit</span></div>`).join('')
+    ? worstFlags.map(r=>`<div class="flag-row clickable" data-cust="${escAttr(r.customer)}"><span>${r.invoice||'—'}, ${r.customer}</span><span class="amt">${money(r.net)} net, ${fmtINR(r.profit)} profit</span></div>`).join('')
     : `<div class="empty-note">No zero or negative-profit invoices in this filter.</div>`;
 
   /* 9. Efficiency */
@@ -368,7 +373,7 @@ function renderBI(){
   const effList = agg.bySp.filter(s=>s.invoices>0).map(s=>({...s, avgProfit: s.profit/s.invoices}))
     .sort((a,b)=>b.avgProfit-a.avgProfit).slice(0, ADMIN.topSalespersonN);
   autoFitChartWidth('biEfficiency', effList.length, 64, 0);
-  makeChart('biEfficiency','biEfficiency', {
+  makeChart('biEfficiency','biEfficiency', { drill:(di,i)=>({ action:()=>openSalespersonDetail(effList[i].salesperson) }),
     type:'bar', data:{ labels: effList.map(s=>s.salesperson), datasets:[Object.assign({label:'Avg. profit per order', data:effList.map(s=>s.avgProfit), backgroundColor:'#1FB286'}, barStyle)] },
     options: baseOpts({y:{ticks:{callback:v=>fmtINRShort(v)}}}, false, false, (evts)=>{
       const s = effList[evts[0].dataIndex];
@@ -380,7 +385,7 @@ function renderBI(){
   destroyChart('biTaxTrend');
   document.getElementById('biTaxDesc').textContent = `Total tax in this filter: ${fmtINR(totalTax)} (${fmtPct(taxRatio)} of billed value), ${buckets.granularity.toLowerCase()} view`;
   autoFitChartWidth('biTaxTrend', periodLabels.length, 54, 0);
-  makeChart('biTaxTrend','biTaxTrend', {
+  makeChart('biTaxTrend','biTaxTrend', { drill:(di,i)=>({ title:`Tax — ${periodLabels[i]}`, rows: rows.filter(buckets.defs[i].match) }),
     type:'line', data:{ labels:periodLabels, datasets:[{label:'Tax', data:items.map(it=>it.agg.gross-it.agg.net), borderColor:'#EF5466', backgroundColor:'rgba(239,84,102,.14)', fill:true, tension:.35, borderWidth:2.5, pointRadius:3.5, pointBackgroundColor:'#fff', pointBorderColor:'#EF5466', pointBorderWidth:2}] },
     options: baseOpts({y:{ticks:{callback:v=>fmtINRShort(v)}}, x:{ticks:{maxRotation:45,autoSkip:true,maxTicksLimit:40}}}, false, false, (evts)=>{
       const idx = evts[0].dataIndex; const a = items[idx].agg;
@@ -398,7 +403,7 @@ function renderBI(){
     ? `Invoices over ~${fmtINR(outlierThreshold)} (average + ${ADMIN.outlierSD}× std-dev), worth a quick check`
     : 'No invoices in this filter';
   document.getElementById('biOutlierList').innerHTML = outliers.length
-    ? outliers.map(r=>`<div class="flag-row"><span>${r.invoice||'—'}, ${r.customer} <span style="color:var(--ink-dim)">(${r.salesperson})</span></span><span class="amt" style="color:var(--orange-2)">${fmtINR(r.net)}</span></div>`).join('')
+    ? outliers.map(r=>`<div class="flag-row clickable" data-cust="${escAttr(r.customer)}"><span>${r.invoice||'—'}, ${r.customer} <span style="color:var(--ink-dim)">(${r.salesperson})</span></span><span class="amt" style="color:var(--orange-2)">${fmtINR(r.net)}</span></div>`).join('')
     : `<div class="empty-note">No unusually large invoices flagged in this filter.</div>`;
 }
 
@@ -455,8 +460,8 @@ function showCustomerPopup(idx){
   document.getElementById('custPopupBody').innerHTML = list.length ? list.map(c=>`
     <tr>
       <td style="white-space:normal;word-break:break-word;line-height:1.35">${c.name}</td>
-      <td style="text-align:right;white-space:nowrap">${fmtINR(c.net)}</td>
-      <td style="text-align:right;white-space:nowrap">${fmtINR(c.profit)}</td>
+      <td style="text-align:right;white-space:nowrap">${money(c.net)}</td>
+      <td style="text-align:right;white-space:nowrap">${money(c.profit)}</td>
       <td style="text-align:right;white-space:nowrap;font-weight:700;color:${c.margin>=0?'var(--good)':'var(--coral)'}">${fmtPct(c.margin)}</td>
     </tr>`).join('') : `<tr><td colspan="4" style="padding:18px;text-align:center;color:var(--ink-dim)">No customers in this period.</td></tr>`;
   document.getElementById('custPopupOverlay').style.display = 'flex';
@@ -465,14 +470,14 @@ document.getElementById('custPopupClose').addEventListener('click', ()=>{ docume
 document.getElementById('custPopupOverlay').addEventListener('click', e=>{ if(e.target.id==='custPopupOverlay') e.target.style.display='none'; });
 
 function scoreRowHtml(r){
-  return `<tr>
+  return `<tr class="clickable" data-sp="${escAttr(r.sp)}">
     <td class="mis-name">${r.sp}${!r.salary?' <span style="color:var(--coral);font-size:10px">(no salary set)</span>':''}</td>
     <td>${uniqCustCell(r.spRows)}</td>
-    <td>${fmtINR(r.avgPlan||0)}</td><td>${fmtINR(r.avgActual||0)}</td><td>${scoreSpanNum(r.avgScore)}</td>
-    <td>${fmtINR(r.revenuePlan)}</td><td>${fmtINR(r.revenueActual)}</td><td>${scoreSpanNum(r.revenueScore)}</td>
-    <td>${fmtINR(r.profitPlan)}</td><td>${fmtINR(r.profitActual)}</td><td>${scoreSpanNum(r.profitScore)}</td>
+    <td>${money(r.avgPlan||0)}</td><td>${money(r.avgActual||0)}</td><td>${scoreSpanNum(r.avgScore)}</td>
+    <td>${money(r.revenuePlan)}</td><td>${money(r.revenueActual)}</td><td>${scoreSpanNum(r.revenueScore)}</td>
+    <td>${money(r.profitPlan)}</td><td>${money(r.profitActual)}</td><td>${scoreSpanNum(r.profitScore)}</td>
     <td>${growthChip(r.growth)}</td>
-    <td>${fmtINR(r.loss)}</td><td>${scoreSpanNum(r.overall)}</td>
+    <td>${money(r.loss)}</td><td>${scoreSpanNum(r.overall)}</td>
   </tr>`;
 }
 function topVisibleSalesperson(rowsArr){
@@ -557,6 +562,7 @@ function renderMisScoring(){
   const crrRows = crrNamesVisible.map(sp=>computeScoreRow(sp,
     curRows.filter(r=>r.salesperson===sp && r.ordertype==='CRR'),
     prevRows.filter(r=>r.salesperson===sp && r.ordertype==='CRR'), 20, periodDivisor));
+  SCORE_CTX = { nbdRows, crrRows, curRows, prevRows, label: curLabelText, nbdNames, crrNames, otherNames };
   document.getElementById('nbdScoreBody').innerHTML = nbdRows.length ? nbdRows.map(scoreRowHtml).join('')
     : `<tr><td colspan="14" style="text-align:center;color:var(--ink-dim);padding:16px">No one assigned to the NBD department yet (or all are hidden).</td></tr>`;
   document.getElementById('crrScoreBody').innerHTML = crrRows.length ? crrRows.map(scoreRowHtml).join('')
@@ -569,8 +575,8 @@ function renderMisScoring(){
     const prevProfit = prevOrderRows.reduce((s,r)=>s+r.profit,0);
     const prevMargin = prevNet ? (prevProfit/prevNet*100) : null;
     const marginGrowth = (margin!==null && prevMargin) ? ((margin-prevMargin)/Math.abs(prevMargin)*100) : null;
-    return `<tr><td>${sp}</td><td>${uniqCustCell(curOrderRows)}</td><td>${fmtNum(curOrderRows.length)}</td>
-      <td>${fmtINR(net)}</td><td>${fmtINR(profit)}</td><td>${margin===null?'—':fmtPct(margin)}</td><td>${growthChip(marginGrowth)}</td></tr>`;
+    return `<tr class="clickable" data-sp="${escAttr(sp)}"><td>${sp}</td><td>${uniqCustCell(curOrderRows)}</td><td>${fmtNum(curOrderRows.length)}</td>
+      <td>${money(net)}</td><td>${money(profit)}</td><td>${margin===null?'—':fmtPct(margin)}</td><td>${growthChip(marginGrowth)}</td></tr>`;
   }
   document.getElementById('nbdCrossBody').innerHTML = nbdNamesVisible.length
     ? nbdNamesVisible.map(sp=>crossRowHtml(sp, curRows.filter(r=>r.salesperson===sp && r.ordertype==='CRR'), prevRows.filter(r=>r.salesperson===sp && r.ordertype==='CRR'))).join('')

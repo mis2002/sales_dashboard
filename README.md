@@ -13,6 +13,8 @@ js/charts.js                       ← chart theme, data labels, chart builders
 js/render.js                       ← cards, tables, MIS, BI, scoring screens
 js/customer-calc.js                ← Customers tab: segments, states, pin codes, insights (calculations)
 js/customer-view.js                ← Customers tab: charts, tables, customer popup, CSV export
+js/interact.js                     ← clicks, invoice & salesperson popups, CSV export, table search, quick ranges
+js/page-insights.js                ← auto insights for Main, BI and Scoring pages
 js/app.js                          ← buttons, filters, admin panel, loading
 ```
 
@@ -50,3 +52,11 @@ Segments (recalculated for the selected period end):
 - Needs attention: rare orders, 45–90 days quiet
 - Lost: 90+ days without an order
 Change the day limits in `segmentOf()` inside `js/customer-calc.js`.
+
+## Interactive features (all pages)
+- **Click anything**: chart bars/slices/points, KPI tiles, week cards, insights, table rows → opens the exact invoices, salesperson profile or customer profile behind it.
+- **Invoice popup**: switch between Invoices / By customer / By salesperson / By state / By order type, search, sort by any column, export CSV.
+- **Salesperson profile**: KPIs, trend, rank, zero-profit invoices, top customers, state split.
+- **Quick range** chips: This week, Last week, This month, Last month, Last 30 days, This FY (Apr–Mar), All time. Based on the latest invoice date in the sheet.
+- **Export CSV** on every table (exact rupee values, not rounded) and **Export filtered invoices** in the filter bar.
+- **Search** box on the bigger tables; it stays applied when filters change.

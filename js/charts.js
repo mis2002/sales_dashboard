@@ -141,6 +141,18 @@ function autoFitChartWidth(canvasId, n, perItem, minWidth){
 /* One place that creates every chart: destroys the old one, and if Chart.js is missing
    shows a readable notice inside the chart box instead of crashing the whole page. */
 function makeChart(key, canvasId, config){
+  // optional drill(datasetIndex, index) → { title, rows, sub } or { action } : makes the chart clickable
+  const drill = config.drill; delete config.drill;
+  if(drill){
+    config.options = config.options || {};
+    config.options.onClick = (evt, els)=>{
+      const el = els && els[0]; if(!el) return;
+      const d = drill(el.datasetIndex, el.index);
+      if(!d) return;
+      if(d.action) d.action(); else openInvoiceList(d.title, d.rows, d.sub);
+    };
+    config.options.onHover = (evt, els)=>{ const t = evt.native && evt.native.target; if(t) t.style.cursor = els.length ? 'pointer' : 'default'; };
+  }
   if(charts[key]){ try{ charts[key].destroy(); }catch(e){} delete charts[key]; }
   const canvas = document.getElementById(canvasId);
   if(!canvas) return null;
@@ -224,7 +236,8 @@ function renderTrend(type){
       : `Grouped into ${buckets.granularity.toLowerCase()} buckets automatically because the period is long`);
   autoFitChartWidth('trendChart', labels.length, 48, 0);
   const isBar = type==='bar', fillArea = type==='area';
-  makeChart('trend','trendChart', { type: isBar?'bar':'line',
+  makeChart('trend','trendChart', { drill:(di,i)=>({ title:`${buckets.granularity} — ${labels[i]}`, rows: rows.filter(buckets.defs[i].match) }),
+    type: isBar?'bar':'line',
     data:{ labels, datasets:[Object.assign({label:mi.short, data, borderColor:mi.color,
       backgroundColor: isBar? mi.color : mi.colorSoft, fill:fillArea, tension:.35, borderWidth:isBar?0:2.5,
       pointRadius:isBar?0:3.5, pointBackgroundColor:'#fff', pointBorderColor:mi.color, pointBorderWidth:2}, isBar?barStyle:{})]},
@@ -246,7 +259,8 @@ function renderWow(type){
   const aggs = scopeWeeks.map(w=>aggregateRows(rows.filter(r=>r.weekKey===w.key)));
   const labels = scopeWeeks.map(w=>w.label);
   autoFitChartWidth('wowChart', labels.length, 46, 0);
-  makeChart('wow','wowChart', { type,
+  makeChart('wow','wowChart', { drill:(di,i)=>({ title:`${scopeWeeks[i].label} (${scopeWeeks[i].range})`, rows: rows.filter(r=>r.weekKey===scopeWeeks[i].key) }),
+    type,
     data:{ labels, datasets:[Object.assign({label:mi.short, data:aggs.map(a=>a[mi.key]),
       backgroundColor: type==='bar' ? labels.map((_,i)=>PERIOD_COLORS[i%PERIOD_COLORS.length]) : mi.colorSoft,
       borderColor:mi.color, borderWidth:type==='bar'?0:2.5, tension:.35, fill:false,
@@ -267,7 +281,8 @@ function renderSplit(type){
     autoFitChartWidth('splitChart', 0, 0, 0);
     const crrRec = aggregateRows(rows.filter(r=>r.ordertype==='CRR'));
     const nbdRec = aggregateRows(rows.filter(r=>r.ordertype==='NBD'));
-    makeChart('split','splitChart', {type:'doughnut',
+    makeChart('split','splitChart', { drill:(di,i)=>{ const ot = i===0?'CRR':'NBD'; return { title:`${ot} orders`, rows: rows.filter(r=>r.ordertype===ot) }; },
+      type:'doughnut',
       data:{labels:['CRR','NBD'], datasets:[{data:[crrRec[mi.key],nbdRec[mi.key]], backgroundColor:[CRR_COLOR,NBD_COLOR], borderColor:'#fff', borderWidth:4, hoverOffset:6}]},
       options:{ responsive:true, maintainAspectRatio:false, cutout:'55%',
         plugins:{ legend:{position:'bottom',labels:{color:THEME.ink,font:{size:11.5},usePointStyle:true,pointStyle:'circle'}},
@@ -281,7 +296,8 @@ function renderSplit(type){
   const stacked = type==='stacked';
   autoFitChartWidth('splitChart', labels.length, stacked?50:70, 0);
   const bs = stacked ? {borderRadius:6, borderSkipped:false, maxBarThickness:64, borderColor:'#fff', borderWidth:{top:2}} : barStyle;
-  makeChart('split','splitChart', {type:'bar', data:{labels, datasets:[
+  makeChart('split','splitChart', { drill:(di,i)=>{ const ot = di===0?'CRR':'NBD', w = scopeWeeks[i]; return { title:`${ot} — ${w.label} (${w.range})`, rows: rows.filter(r=>r.weekKey===w.key && r.ordertype===ot) }; },
+    type:'bar', data:{labels, datasets:[
       Object.assign({label:'CRR', data:crrRecs.map(r=>r[mi.key]), backgroundColor:CRR_COLOR, meta:crrRecs}, bs),
       Object.assign({label:'NBD', data:nbdRecs.map(r=>r[mi.key]), backgroundColor:NBD_COLOR, meta:nbdRecs}, bs)
     ]},
@@ -310,7 +326,8 @@ function renderSp(type){
     autoFitChartWidth('spChart', scopeWeeks.length, 56, 0);
     const datasets = topN.map((sp,i)=>{ const recs = scopeWeeks.map(w=>spRec(w,sp)); return { label:sp, data:recs.map(r=>r[mi.key]), meta:recs,
       borderColor:PALETTE[i%PALETTE.length], backgroundColor:PALETTE[i%PALETTE.length], tension:.35, borderWidth:2.5, fill:false, pointRadius:3.5 }; });
-    makeChart('sp','spChart', {type:'line', data:{labels:scopeWeeks.map(w=>w.label), datasets},
+    makeChart('sp','spChart', { drill:(di,i)=>{ const sp = topN[di], w = scopeWeeks[i]; return { title:`${sp} — ${w.label} (${w.range})`, rows: rows.filter(r=>r.salesperson===sp && r.weekKey===w.key) }; },
+      type:'line', data:{labels:scopeWeeks.map(w=>w.label), datasets},
       options: baseOpts({y:{ticks:{callback:v=>fmtINRShort(v)}}}, true, false, (items)=>{
         const lines=[]; items.forEach(it=>{ const rec=it.dataset.meta[it.dataIndex]; lines.push(`${it.dataset.label} — ${scopeWeeks[it.dataIndex]?.label||''}`, ...richTooltip(rec)); });
         return lines;
@@ -323,7 +340,8 @@ function renderSp(type){
   const bs = stacked ? {borderRadius:6, borderSkipped:false, maxBarThickness:90, borderColor:'#fff', borderWidth:{top:2}} : {borderRadius:6, borderSkipped:false, maxBarThickness:40};
   const datasets = spPeriods.map((w,wi)=>{ const recs = topN.map(sp=>spRec(w,sp)); return Object.assign({ label:`${w.label} (${w.range})`, data:recs.map(r=>r[mi.key]), meta:recs,
     backgroundColor: PERIOD_COLORS[wi%PERIOD_COLORS.length] }, bs); });
-  makeChart('sp','spChart', {type:'bar', data:{labels:topN, datasets},
+  makeChart('sp','spChart', { drill:(di,i)=>{ const sp = topN[i], w = spPeriods[di]; return { title:`${sp} — ${w.label} (${w.range})`, rows: rows.filter(r=>r.salesperson===sp && r.weekKey===w.key) }; },
+    type:'bar', data:{labels:topN, datasets},
     options: singleItemOpts({x:{stacked}, y:{stacked,ticks:{callback:v=>fmtINRShort(v)}}}, true, false, (items)=>{
       const it = items[0];
       return [`${it.dataset.label} — ${topN[it.dataIndex]}`, ...richTooltip(it.dataset.meta[it.dataIndex])];

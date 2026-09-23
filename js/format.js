@@ -42,3 +42,6 @@ function setAnimatedText(el, text){
   el.textContent = text;
   el.classList.remove('val-anim'); void el.offsetWidth; el.classList.add('val-anim');
 }
+
+// Money inside tables: shows the short ₹ format but keeps the exact rupee value for CSV export
+function money(n){ return `<span data-v="${Math.round(n||0)}">${fmtINR(n||0)}</span>`; }
