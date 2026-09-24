@@ -254,8 +254,11 @@ function fillAdminForm(){
       const salary = ADMIN.salaries[sp] || '';
       const crTarget = (ADMIN.crTargets && ADMIN.crTargets[sp]) || '';
       const hidden = ADMIN.hiddenFromMis && ADMIN.hiddenFromMis[sp];
-      return `<div class="admin-sp-row" style="grid-template-columns:1fr 90px 100px 90px 84px">
-        <span class="sp-name" title="${a}">${a}</span>
+      const tgt = (ADMIN.custTargets||{})[sp] || '';
+      return `<div class="admin-sp-row" style="grid-template-columns:38px 1fr 88px 100px 104px 84px">
+        <label title="Click to upload a photo" style="position:relative">${spPhotoHtml(sp,'adm-photo', ADMIN_PENDING.photos[sp] || `assets/team/${spSlug(sp)}.jpg`)}
+          <input type="file" accept="image/*" data-sp-photo="${a}" hidden></label>
+        <span class="sp-name" title="${a}">${a} <button type="button" class="link-btn sm" data-sp-photo-del="${a}" style="${ADMIN_PENDING.photos[sp]?'':'display:none'}">remove photo</button></span>
         <select data-sp-dept="${a}">
           <option value="" ${dept===''?'selected':''}>Dept</option>
           <option value="NBD" ${dept==='NBD'?'selected':''}>NBD</option>
@@ -263,13 +266,59 @@ function fillAdminForm(){
           <option value="OTHER" ${dept==='OTHER'?'selected':''}>OTHER</option>
         </select>
         <input type="number" data-sp-salary="${a}" placeholder="Salary ₹" value="${salary}">
-        <input type="number" data-sp-crtarget="${a}" placeholder="CR target %" value="${crTarget}">
+        <input type="number" data-sp-newc="${a}" placeholder="New cust/month" title="NBD: new customers per month" value="${tgt}" ${dept==='NBD'?'':'disabled'}>
         <label style="display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--ink-dim);white-space:nowrap">
           <input type="checkbox" data-sp-hide="${a}" ${hidden?'checked':''}> Hide in MIS
         </label>
       </div>`;
     }).join('');
   }
+}
+/* ---- logo / photo uploads (resized in the browser so they fit in local storage) ---- */
+const ADMIN_PENDING = { logo:'', photos:{} };
+function resizeImage(file, maxW, maxH, type){
+  return new Promise((res, rej)=>{
+    const fr = new FileReader();
+    fr.onerror = rej;
+    fr.onload = ()=>{ const img = new Image(); img.onerror = rej; img.onload = ()=>{
+      const k = Math.min(1, maxW/img.width, maxH/img.height);
+      const c = document.createElement('canvas'); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k);
+      const x = c.getContext('2d'); if(type==='image/jpeg'){ x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); }
+      x.drawImage(img,0,0,c.width,c.height); res(c.toDataURL(type, 0.85)); }; img.src = fr.result; };
+    fr.readAsDataURL(file);
+  });
+}
+function renderLogoPreview(){
+  const p = document.getElementById('admLogoPreview');
+  if(ADMIN_PENDING.logo){ p.src = ADMIN_PENDING.logo; p.style.display = ''; } else p.style.display = 'none';
+}
+function renderScoringForm(){
+  const G = ADMIN.scoring;
+  const f = (label, key, suffix, val) => `<label class="admin-field"><span style="font-size:11px;color:var(--ink-dim);font-weight:600">${label}</span>
+    <span style="display:flex;align-items:center;gap:6px"><input type="number" step="any" data-scs="${key}" value="${val ?? G[key]}">${suffix?`<span class="hint">${suffix}</span>`:''}</span></label>`;
+  document.getElementById('admScoring').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+      ${f('NBD profit plan = salary ×','nbdProfitX')}${f('NBD revenue plan = profit ×','nbdRevX')}
+      ${f('CRR profit plan = salary ×','crrProfitX')}${f('CRR revenue plan = profit ×','crrRevX')}
+      ${f('CRR margin target','crrMargin','%')}${f('CRR retention target','crrRetention','%')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px">
+      <div><b style="font-size:12px">NBD weights</b> <span class="hint" id="wNbdTot"></span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
+        ${f('New customers','wNbd.newC','%',G.wNbd.newC)}${f('Profit','wNbd.profit','%',G.wNbd.profit)}${f('Revenue','wNbd.revenue','%',G.wNbd.revenue)}${f('Avg sale','wNbd.avg','%',G.wNbd.avg)}</div></div>
+      <div><b style="font-size:12px">CRR weights</b> <span class="hint" id="wCrrTot"></span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
+        ${f('Profit','wCrr.profit','%',G.wCrr.profit)}${f('Revenue','wCrr.revenue','%',G.wCrr.revenue)}${f('Retention','wCrr.retention','%',G.wCrr.retention)}${f('Margin','wCrr.margin','%',G.wCrr.margin)}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:12px">
+      ${f('Working days / month','workDays','Mon–Sat')}${f('Cap per KPI','cap','%')}${f('Green from','green','pts')}${f('Amber from','amber','pts')}${f('Retention window','retWindow','days')}
+    </div>
+    <label class="admin-check-row" style="margin-top:10px"><input type="checkbox" id="admExcludeCo" ${G.excludeCompany?'checked':''}> Leave COMPANY SALES = YES invoices out of personal scores</label>`;
+  updateWeightTotals();
+}
+function updateWeightTotals(){
+  const tot = t => [...document.querySelectorAll(`[data-scs^="${t}."]`)].reduce((s,i)=>s+(+i.value||0),0);
+  [['wNbd','wNbdTot'],['wCrr','wCrrTot']].forEach(([t,id])=>{ const v = tot(t), el = document.getElementById(id); el.textContent = `total ${v}%${v===100?'':' — must be 100'}`; el.style.color = v===100 ? 'var(--good)' : 'var(--coral)'; });
 }
 function applyPanelVisibility(){
   PANEL_REGISTRY.forEach(p=>{
@@ -281,7 +330,8 @@ function tryAdminLogin(){
   if(document.getElementById('adminPassInput').value === ADMIN_PASSWORD){
     document.getElementById('adminPassStage').style.display = 'none';
     document.getElementById('adminSettingsStage').style.display = 'block';
-    fillAdminForm();
+    ADMIN_PENDING.logo = ADMIN.logo || ''; ADMIN_PENDING.photos = Object.assign({}, ADMIN.photos||{});
+    fillAdminForm(); renderLogoPreview(); renderScoringForm();
   } else {
     document.getElementById('adminPassError').style.display = 'block';
   }
@@ -297,7 +347,17 @@ document.getElementById('adminSaveBtn').addEventListener('click', ()=>{
   const salaries = {}, departments = {}, crTargets = {}, hiddenFromMis = {};
   document.querySelectorAll('#admSalespersonList [data-sp-salary]').forEach(inp=>{ const v = +inp.value; if(v > 0) salaries[inp.dataset.spSalary] = v; });
   document.querySelectorAll('#admSalespersonList [data-sp-dept]').forEach(sel=>{ if(sel.value) departments[sel.dataset.spDept] = sel.value; });
-  document.querySelectorAll('#admSalespersonList [data-sp-crtarget]').forEach(inp=>{ const v = +inp.value; if(v > 0) crTargets[inp.dataset.spCrtarget] = v; });
+  Object.assign(crTargets, ADMIN.crTargets || {});
+  const custTargets = {};
+  document.querySelectorAll('#admSalespersonList [data-sp-newc]').forEach(inp=>{ const v = +inp.value; if(v > 0) custTargets[inp.dataset.spNewc] = v; });
+  const scoring = JSON.parse(JSON.stringify(ADMIN.scoring));
+  document.querySelectorAll('#admScoring [data-scs]').forEach(inp=>{
+    const [a,b] = inp.dataset.scs.split('.'), v = +inp.value;
+    if(b) scoring[a][b] = Math.max(0, v||0); else if(inp.value!=='') scoring[a] = Math.max(0, v);
+  });
+  scoring.excludeCompany = document.getElementById('admExcludeCo').checked;
+  const wn = Object.values(scoring.wNbd).reduce((s,v)=>s+v,0), wc = Object.values(scoring.wCrr).reduce((s,v)=>s+v,0);
+  if(wn!==100 || wc!==100){ alert(`Scoring weights must add up to 100 (NBD is ${wn}, CRR is ${wc}). Please fix them before saving.`); return; }
   document.querySelectorAll('#admSalespersonList [data-sp-hide]').forEach(cb=>{ if(cb.checked) hiddenFromMis[cb.dataset.spHide] = true; });
   const updated = {
     sheetId: document.getElementById('admSheetId').value.trim() || DEFAULT_ADMIN_SETTINGS.sheetId,
@@ -310,10 +370,11 @@ document.getElementById('adminSaveBtn').addEventListener('click', ()=>{
     topSalespersonN: Math.max(1, +document.getElementById('admTopSp').value || DEFAULT_ADMIN_SETTINGS.topSalespersonN),
     outlierSD: Math.max(0.5, +document.getElementById('admOutlierSD').value || DEFAULT_ADMIN_SETTINGS.outlierSD),
     lowProfitPct: Math.max(0, +document.getElementById('admLowProfit').value || 0),
-    visiblePanels, salaries, departments, crTargets, hiddenFromMis
+    visiblePanels, salaries, departments, crTargets, hiddenFromMis,
+    custTargets, scoring, logo: ADMIN_PENDING.logo, photos: ADMIN_PENDING.photos
   };
   try{ localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(updated)); location.reload(); }
-  catch(e){ alert('Could not save settings — your browser may be blocking local storage for this file.'); }
+  catch(e){ alert('Could not save settings. If you added many photos, the browser storage may be full — use smaller pictures or add them to the repo as assets/team/<name>.jpg.'); }
 });
 document.getElementById('adminDefaultsBtn').addEventListener('click', ()=>{
   if(confirm('Restore all admin settings to factory defaults? This reloads the page.')){
@@ -341,6 +402,44 @@ document.getElementById('dashTitle').textContent = ADMIN.dashboardTitle;
 document.getElementById('heroHello').textContent = `Hello, ${titleCase(ADMIN.brandName)}!`;
 document.getElementById('avatarBadge').textContent = ADMIN.brandName.split(/\s+/).filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || 'PN';
 document.querySelector('.sb-brand').textContent = ADMIN.brandName.split(/\s+/).filter(Boolean).map(w=>w[0]).join('').slice(0,3) || 'PnP';
+// Company logo: Admin upload first, then assets/logo.png in the repo; hidden if neither exists
+(function showLogo(){
+  const src = ADMIN.logo || 'assets/logo.png';
+  [['brandLogo',null],['sbLogo','.sb-brand']].forEach(([id, textSel])=>{
+    const img = document.getElementById(id);
+    img.onload = ()=>{ img.style.display = ''; if(textSel) document.querySelector(textSel).style.display = 'none'; };
+    img.onerror = ()=>{ img.style.display = 'none'; };
+    img.src = src;
+  });
+})();
+/* admin: uploads + live weight totals */
+document.getElementById('admLogoFile').addEventListener('change', async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  ADMIN_PENDING.logo = await resizeImage(f, 480, 160, 'image/png'); renderLogoPreview();
+});
+document.getElementById('admLogoRemove').addEventListener('click', ()=>{ ADMIN_PENDING.logo = ''; document.getElementById('admLogoFile').value=''; renderLogoPreview(); });
+document.getElementById('admSalespersonList').addEventListener('change', async e=>{
+  const inp = e.target.closest('[data-sp-photo]');
+  if(inp && inp.files[0]){
+    const name = inp.dataset.spPhoto, data = await resizeImage(inp.files[0], 320, 320, 'image/jpeg');
+    ADMIN_PENDING.photos[name] = data;
+    setAdminPhoto(inp.closest('.admin-sp-row'), data, true);   // update in place so unsaved edits stay
+    return;
+  }
+  const d = e.target.closest('[data-sp-dept]');
+  if(d){ const t = document.querySelector(`[data-sp-newc="${CSS.escape(d.dataset.spDept)}"]`); if(t) t.disabled = d.value!=='NBD'; }
+});
+document.getElementById('admSalespersonList').addEventListener('click', e=>{
+  const b = e.target.closest('[data-sp-photo-del]'); if(!b) return;
+  e.preventDefault(); const name = b.dataset.spPhotoDel; delete ADMIN_PENDING.photos[name];
+  setAdminPhoto(b.closest('.admin-sp-row'), `assets/team/${spSlug(name)}.jpg`, false);
+});
+function setAdminPhoto(row, src, hasUpload){
+  const img = row.querySelector('.adm-photo img'), ini = row.querySelector('.adm-photo .ph-initials');
+  img.style.display = ''; ini.style.display = 'none'; img.src = src;
+  row.querySelector('[data-sp-photo-del]').style.display = hasUpload ? '' : 'none';
+}
+document.getElementById('admScoring').addEventListener('input', updateWeightTotals);
 
 applyPanelVisibility();
 loadData(false);

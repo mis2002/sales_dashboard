@@ -266,6 +266,7 @@ function openSalespersonDetail(name){
   const dept = ADMIN.departments[name];
 
   document.getElementById('spDetailTitle').textContent = name;
+  document.getElementById('spDetailAvatar').innerHTML = spPhotoHtml(name, 'sp-avatar');
   document.getElementById('spDetailMeta').innerHTML =
     `<span class="chip">${dept ? dept+' team' : 'No department set'}</span>` +
     `<span class="chip">${ADMIN.salaries[name] ? 'Salary ₹'+fmtNum(ADMIN.salaries[name]) : 'No salary set'}</span>` +

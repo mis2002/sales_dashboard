@@ -37,6 +37,7 @@ const PANEL_REGISTRY = [
   { key:'panel-main-insights',      label:'Main — Key insights' },
   { key:'panel-bi-insights',        label:'BI Insights — Profit insights' },
   { key:'panel-score-insights',     label:'Scoring — Scoring insights' },
+  { key:'panel-cust-map',          label:'Customers — Customer map' },
   { key:'panel-cust-insights',      label:'Customers — Key insights' },
   { key:'panel-cust-state',         label:'Customers — Sales by state chart' },
   { key:'panel-cust-region',        label:'Customers — Sales by region' },
@@ -66,14 +67,30 @@ const DEFAULT_ADMIN_SETTINGS = {
   salaries: {},
   departments: {},
   crTargets: {},
-  hiddenFromMis: {}
+  hiddenFromMis: {},
+  logo: '',               // company logo (data URL) uploaded in Admin; falls back to assets/logo.png in the repo
+  photos: {},             // { [salespersonName]: dataURL } — falls back to assets/team/<name>.jpg in the repo
+  custTargets: {},        // { [NBD salespersonName]: new customers per month }
+  scoring: {              // MIS scoring (new system) — defaults as agreed
+    nbdProfitX: 10, nbdRevX: 10, crrProfitX: 20, crrRevX: 20,
+    crrMargin: 5, crrRetention: 70,
+    wNbd: { newC: 30, profit: 30, revenue: 25, avg: 15 },
+    wCrr: { profit: 35, revenue: 25, retention: 20, margin: 20 },
+    workDays: 26, cap: 120, green: 100, amber: 80, retWindow: 30,
+    excludeCompany: true
+  }
 };
 function loadAdminSettings(){
+  let s = Object.assign({}, DEFAULT_ADMIN_SETTINGS);
   try{
     const raw = localStorage.getItem(ADMIN_SETTINGS_KEY);
-    if(raw) return Object.assign({}, DEFAULT_ADMIN_SETTINGS, JSON.parse(raw));
+    if(raw) s = Object.assign({}, DEFAULT_ADMIN_SETTINGS, JSON.parse(raw));
   } catch(e){ console.warn('Could not read admin settings', e); }
-  return Object.assign({}, DEFAULT_ADMIN_SETTINGS);
+  // deep-merge scoring so new defaults appear even for older saved settings
+  const d = DEFAULT_ADMIN_SETTINGS.scoring, g = s.scoring || {};
+  s.scoring = Object.assign({}, d, g, { wNbd: Object.assign({}, d.wNbd, g.wNbd), wCrr: Object.assign({}, d.wCrr, g.wCrr) });
+  s.photos = s.photos || {}; s.custTargets = s.custTargets || {};
+  return s;
 }
 let ADMIN = loadAdminSettings();
 CONFIG.SHEET_ID = ADMIN.sheetId;

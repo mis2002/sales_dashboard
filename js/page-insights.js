@@ -166,39 +166,42 @@ function renderBIInsights(){
 
 /* ============================ SCORING ============================ */
 function renderScoringInsights(){
-  const S = SCORE_CTX;
-  if(!S || (!S.nbdRows.length && !S.crrRows.length)){
+  const S = SCORE2;
+  if(!S || (!S.nbd.length && !S.crr.length)){
     return drawInsights('scoreInsights', [{ tone:'warn', text:'Assign salespeople to NBD / CRR departments with salaries in <b>Admin</b> to see scoring insights.' }]);
   }
-  const out = [];
-  const team = (rows, name)=>{
-    const withPlan = rows.filter(r=>r.profitPlan>0);
-    if(!withPlan.length) return;
-    const plan = withPlan.reduce((s,r)=>s+r.profitPlan,0), act = withPlan.reduce((s,r)=>s+r.profitActual,0);
-    const pct = act/plan*100, met = withPlan.filter(r=>r.profitActual>=r.profitPlan);
-    out.push({ tone: pct>=100 ? 'good' : pct>=75 ? 'warn' : 'bad',
-      text:`<b>${name} team</b> made ${fmtINR(act)} profit vs a plan of ${fmtINR(plan)} — <b>${pct.toFixed(0)}% of plan</b>. ${fmtNum(met.length)} of ${fmtNum(withPlan.length)} met their profit target${met.length?`: ${met.map(r=>r.sp).join(', ')}`:''}.` });
+  const G = ADMIN.scoring, out = [];
+  const team = (list, name)=>{
+    const scored = list.filter(r=>r.total!==null);
+    if(!scored.length) return;
+    const avg = scored.reduce((s,r)=>s+r.total,0)/scored.length;
+    const on = scored.filter(r=>r.total>=G.green);
+    const prof = list.map(r=>r.k.find(k=>k.key==='profit')).filter(k=>k && !k.na);
+    const pA = prof.reduce((s,k)=>s+k.actual,0), pP = prof.reduce((s,k)=>s+k.plan,0);
+    out.push({ tone: avg>=G.green?'good':avg>=G.amber?'warn':'bad',
+      text:`<b>${name} team</b> averages <b>${avg.toFixed(1)}/100</b> for ${S.W.label}. Profit ${fmtINR(pA)} vs plan ${fmtINR(pP)} (${pP?(pA/pP*100).toFixed(0):0}%). ${fmtNum(on.length)} of ${fmtNum(scored.length)} on target${on.length?`: ${on.map(r=>r.sp).join(', ')}`:''}.` });
   };
-  team(S.nbdRows, 'NBD'); team(S.crrRows, 'CRR');
-  const all = S.nbdRows.concat(S.crrRows).filter(r=>r.overall!==null);
+  team(S.nbd,'NBD'); team(S.crr,'CRR');
+  const all = S.nbd.concat(S.crr).filter(r=>r.total!==null);
   if(all.length >= 2){
-    const best = all.slice().sort((x,y)=>y.overall-x.overall)[0], worst = all.slice().sort((x,y)=>x.overall-y.overall)[0];
-    out.push({ tone:'good', sp:best.sp, text:`Top overall score: <b>${best.sp}</b> (${best.overall>0?'+':''}${best.overall.toFixed(1)}).` });
-    out.push({ tone:'bad', sp:worst.sp, text:`Lowest overall score: <b>${worst.sp}</b> (${worst.overall.toFixed(1)}) — profit ${fmtINR(worst.profitActual)} vs plan ${fmtINR(worst.profitPlan)}.` });
+    const best = all.slice().sort((a,b)=>b.total-a.total)[0], worst = all.slice().sort((a,b)=>a.total-b.total)[0];
+    out.push({ tone:'good', sp:best.sp, text:`Top score: <b>${best.sp}</b> (${best.dept}) with ${best.total.toFixed(1)}/100.` });
+    const wk = worst.k.filter(x=>!x.na).sort((a,b)=>a.raw-b.raw)[0];
+    out.push({ tone:'bad', sp:worst.sp, text:`Lowest score: <b>${worst.sp}</b> (${worst.dept}) with ${worst.total.toFixed(1)}/100${wk?` — weakest on ${wk.label.toLowerCase()} (${fmtPct(wk.raw)} of plan)`:''}.` });
   }
-  const short = S.nbdRows.concat(S.crrRows).filter(r=>r.profitPlan>0 && r.loss<0);
-  if(short.length) out.push({ tone:'warn', text:`Total profit shortfall across ${fmtNum(short.length)} people: <b>${fmtINR(-short.reduce((s,r)=>s+r.loss,0))}</b>. Largest gap: ${short.sort((x,y)=>x.loss-y.loss).slice(0,3).map(r=>`${r.sp} (${fmtINR(-r.loss)})`).join(', ')}.` });
-  const grow = S.nbdRows.concat(S.crrRows).filter(r=>r.growth!==null && isFinite(r.growth));
-  if(grow.length){
-    const g = grow.slice().sort((x,y)=>y.growth-x.growth)[0];
-    if(g.growth>0) out.push({ tone:'good', sp:g.sp, text:`Fastest revenue growth vs previous period: <b>${g.sp}</b> ${signPct(g.growth)}.` });
+  const nbdNew = S.nbd.map(r=>({ r, k:r.k.find(x=>x.key==='newC') })).filter(o=>o.k && !o.k.na);
+  if(nbdNew.length){
+    const got = nbdNew.reduce((s,o)=>s+o.k.actual,0), plan = nbdNew.reduce((s,o)=>s+o.k.plan,0);
+    out.push({ tone: got>=plan?'good':'warn', text:`NBD brought in <b>${fmtNum(got)} new customers</b> against a target of ${plan%1?plan.toFixed(1):plan}.` });
   }
-  const avgs = S.nbdRows.concat(S.crrRows).filter(r=>r.avgActual);
-  if(avgs.length){
-    const top = avgs.slice().sort((x,y)=>y.avgActual-x.avgActual)[0];
-    out.push({ tone:'info', sp:top.sp, text:`Highest sale per customer: <b>${top.sp}</b> at ${fmtINR(top.avgActual)} across ${fmtNum(top.uniqCustomers)} customer${top.uniqCustomers===1?'':'s'}.` });
+  const ret = S.crr.map(r=>r.k.find(x=>x.key==='retention')).filter(k=>k && !k.na);
+  if(ret.length){
+    const low = S.crr.filter(r=>{ const k = r.k.find(x=>x.key==='retention'); return k && !k.na && k.actual < G.crrRetention; });
+    out.push({ tone: low.length?'warn':'good', text: low.length ? `Retention below ${G.crrRetention}% for ${low.map(r=>`<b>${r.sp}</b> (${fmtPct(r.k.find(x=>x.key==='retention').actual)})`).join(', ')}. Open their card to see which customers haven't come back.` : `Every CRR salesperson is at or above the ${G.crrRetention}% retention target.` });
   }
-  const noSal = S.nbdRows.concat(S.crrRows).filter(r=>!r.salary);
-  if(noSal.length) out.push({ tone:'warn', text:`No salary set for ${noSal.map(r=>r.sp).join(', ')} — their plan and score can't be calculated.` });
+  const noSal = S.nbd.concat(S.crr).filter(r=>r.noSalary);
+  if(noSal.length) out.push({ tone:'warn', text:`No salary set for ${noSal.map(r=>r.sp).join(', ')} — their score can't be calculated. Add it in Admin.` });
+  const noTgt = S.nbd.filter(r=>!r.target);
+  if(noTgt.length) out.push({ tone:'warn', text:`No new-customer target for ${noTgt.map(r=>r.sp).join(', ')} — "New customers" and "Avg sale" are left out of their score until you set one in Admin.` });
   drawInsights('scoreInsights', out);
 }

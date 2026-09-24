@@ -178,8 +178,10 @@ function renderAll(){
   safe('BI Insights', renderBI);
   safe('MIS Scoring', renderMisScoring);
   safe('Customer insights', renderCustomerInsights);
+  safe('Customer map', renderCustomerMap);
   safe('Main insights', renderMainInsights);
   safe('BI insights', renderBIInsights);
+  safe('Scorecards', renderScoringV2);
   safe('Scoring insights', renderScoringInsights);
   safe('Clickable items', afterRenderAll);
 }
@@ -514,10 +516,8 @@ function renderMisScoring(){
     periodDivisor = buckets.granularity==='Daily' ? 28 : buckets.granularity==='Weekly' ? 4 : buckets.granularity==='Monthly' ? 1 : 1/12;
   }
   document.getElementById('scorePeriodLabel').textContent = curLabelText;
-  document.getElementById('scoreLinkNote').textContent = linkNote + ` Profit plan divisor for this period: ÷${periodDivisor.toFixed(2)} (1 = a full month's target, 4 = one week of it).`;
+  document.getElementById('scoreLinkNote').textContent = linkNote;
   const divisorText = periodDivisor.toFixed(periodDivisor % 1 === 0 ? 0 : 2);
-  document.getElementById('nbdProfitHead').textContent = `Profit (Salary×10 ÷ ${divisorText})`;
-  document.getElementById('crrProfitHead').textContent = `Profit (Salary×20 ÷ ${divisorText})`;
 
   const nbdNames = Object.keys(ADMIN.departments).filter(sp=>ADMIN.departments[sp]==='NBD');
   const crrNames = Object.keys(ADMIN.departments).filter(sp=>ADMIN.departments[sp]==='CRR');
@@ -563,10 +563,6 @@ function renderMisScoring(){
     curRows.filter(r=>r.salesperson===sp && r.ordertype==='CRR'),
     prevRows.filter(r=>r.salesperson===sp && r.ordertype==='CRR'), 20, periodDivisor));
   SCORE_CTX = { nbdRows, crrRows, curRows, prevRows, label: curLabelText, nbdNames, crrNames, otherNames };
-  document.getElementById('nbdScoreBody').innerHTML = nbdRows.length ? nbdRows.map(scoreRowHtml).join('')
-    : `<tr><td colspan="14" style="text-align:center;color:var(--ink-dim);padding:16px">No one assigned to the NBD department yet (or all are hidden).</td></tr>`;
-  document.getElementById('crrScoreBody').innerHTML = crrRows.length ? crrRows.map(scoreRowHtml).join('')
-    : `<tr><td colspan="14" style="text-align:center;color:var(--ink-dim);padding:16px">No one assigned to the CRR department yet (or all are hidden).</td></tr>`;
   function crossRowHtml(sp, curOrderRows, prevOrderRows){
     const net = curOrderRows.reduce((s,r)=>s+r.net,0);
     const profit = curOrderRows.reduce((s,r)=>s+r.profit,0);

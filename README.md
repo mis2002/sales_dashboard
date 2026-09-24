@@ -15,6 +15,12 @@ js/customer-calc.js                ← Customers tab: segments, states, pin code
 js/customer-view.js                ← Customers tab: charts, tables, customer popup, CSV export
 js/interact.js                     ← clicks, invoice & salesperson popups, CSV export, table search, quick ranges
 js/page-insights.js                ← auto insights for Main, BI and Scoring pages
+js/scoring.js                      ← MIS scoring (new system): engine, photo cards, score popup
+js/customer-map.js                 ← customer map (states + pin codes)
+js/vendor/india-map.js             ← India state outlines (offline)
+js/vendor/pincodes.js              ← pin code → location + city (offline, loads on Customers tab)
+assets/logo.png                    ← your company logo (you add this)
+assets/team/<name>.jpg             ← salesperson photos (you add these; see assets/README.txt)
 js/app.js                          ← buttons, filters, admin panel, loading
 ```
 
@@ -60,3 +66,19 @@ Change the day limits in `segmentOf()` inside `js/customer-calc.js`.
 - **Quick range** chips: This week, Last week, This month, Last month, Last 30 days, This FY (Apr–Mar), All time. Based on the latest invoice date in the sheet.
 - **Export CSV** on every table (exact rupee values, not rounded) and **Export filtered invoices** in the filter bar.
 - **Search** box on the bigger tables; it stays applied when filters change.
+
+## MIS Scoring (new system)
+Achievement = Actual ÷ Plan × 100 (capped at 120%). Points = achievement × weight. Overall = sum of points out of 100.
+Green 100+, amber 80–99, red below 80. Targets are monthly and scale with the period: week ÷ 4, month × 1, day ÷ 26, custom range × working days ÷ 26, year × 12.
+
+| Team | KPIs (weight) |
+|---|---|
+| NBD | New customers 30, Profit 30 (salary × 10), Revenue 25 (profit plan × 10), Avg sale per customer 15 (revenue plan ÷ customer target) |
+| CRR | Profit 35 (salary × 20), Revenue 25 (profit plan × 20), Retention 20 (target 70%, rolling 30 days for short periods), Margin 20 (target 5%) |
+
+COMPANY SALES = YES invoices and OTHER department are left out of personal scores and shown as "Company sales".
+A KPI with no target (for example no new-customer target) is marked n/a and the other KPIs are re-weighted.
+
+### What to fill in Admin
+Required per salesperson: Department, Monthly salary, New customers per month (NBD only). Optional: photo.
+Everything else (multipliers, targets, weights, cap, bands, working days) is pre-filled under "MIS scoring settings".
