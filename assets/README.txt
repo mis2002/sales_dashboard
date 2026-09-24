@@ -1,6 +1,6 @@
 LOGO AND SALESPERSON PHOTOS (optional — shows them on every computer)
 
-1. Company logo:   put your logo here as   assets/logo.png
+1. Company logo:   already included (assets/logo.png for the header, assets/logo-icon.png for the sidebar)
 2. Team photos:    put photos here as      assets/team/<name>.jpg
    Name = salesperson name in small letters, spaces replaced by "-". Examples:
      Shama          -> assets/team/shama.jpg

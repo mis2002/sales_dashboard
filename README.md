@@ -19,7 +19,7 @@ js/scoring.js                      ← MIS scoring (new system): engine, photo c
 js/customer-map.js                 ← customer map (states + pin codes)
 js/vendor/india-map.js             ← India state outlines (offline)
 js/vendor/pincodes.js              ← pin code → location + city (offline, loads on Customers tab)
-assets/logo.png                    ← your company logo (you add this)
+assets/logo.png, logo-icon.png     ← PickNPack logo (header) and running-man icon (sidebar) — included
 assets/team/<name>.jpg             ← salesperson photos (you add these; see assets/README.txt)
 js/app.js                          ← buttons, filters, admin panel, loading
 ```

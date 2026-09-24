@@ -248,14 +248,15 @@ function fillAdminForm(){
   if(!spNames.length){
     spListEl.innerHTML = `<span class="hint">Load the sheet first — salespeople will appear here automatically.</span>`;
   } else {
-    spListEl.innerHTML = spNames.map(sp=>{
+    const COLS = 'grid-template-columns:38px minmax(120px,1fr) 96px 110px 120px 92px';
+    spListEl.innerHTML = `<div class="admin-sp-head" style="${COLS}"><span>Photo</span><span>Salesperson</span><span>Department</span><span>Monthly salary ₹</span><span>New customers / month <em>(NBD)</em></span><span></span></div>` + spNames.map(sp=>{
       const a = escAttr(sp);
       const dept = ADMIN.departments[sp] || '';
       const salary = ADMIN.salaries[sp] || '';
       const crTarget = (ADMIN.crTargets && ADMIN.crTargets[sp]) || '';
       const hidden = ADMIN.hiddenFromMis && ADMIN.hiddenFromMis[sp];
       const tgt = (ADMIN.custTargets||{})[sp] || '';
-      return `<div class="admin-sp-row" style="grid-template-columns:38px 1fr 88px 100px 104px 84px">
+      return `<div class="admin-sp-row" style="${COLS}">
         <label title="Click to upload a photo" style="position:relative">${spPhotoHtml(sp,'adm-photo', ADMIN_PENDING.photos[sp] || `assets/team/${spSlug(sp)}.jpg`)}
           <input type="file" accept="image/*" data-sp-photo="${a}" hidden></label>
         <span class="sp-name" title="${a}">${a} <button type="button" class="link-btn sm" data-sp-photo-del="${a}" style="${ADMIN_PENDING.photos[sp]?'':'display:none'}">remove photo</button></span>
@@ -265,8 +266,8 @@ function fillAdminForm(){
           <option value="CRR" ${dept==='CRR'?'selected':''}>CRR</option>
           <option value="OTHER" ${dept==='OTHER'?'selected':''}>OTHER</option>
         </select>
-        <input type="number" data-sp-salary="${a}" placeholder="Salary ₹" value="${salary}">
-        <input type="number" data-sp-newc="${a}" placeholder="New cust/month" title="NBD: new customers per month" value="${tgt}" ${dept==='NBD'?'':'disabled'}>
+        <input type="number" data-sp-salary="${a}" placeholder="${dept==='OTHER'?'not needed':'e.g. 18000'}" value="${salary}">
+        <input type="number" data-sp-newc="${a}" placeholder="${dept==='NBD'?'e.g. 8':'NBD only'}" title="NBD: new customers per month" value="${tgt}" ${dept==='NBD'?'':'disabled'}>
         <label style="display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--ink-dim);white-space:nowrap">
           <input type="checkbox" data-sp-hide="${a}" ${hidden?'checked':''}> Hide in MIS
         </label>
@@ -404,12 +405,14 @@ document.getElementById('avatarBadge').textContent = ADMIN.brandName.split(/\s+/
 document.querySelector('.sb-brand').textContent = ADMIN.brandName.split(/\s+/).filter(Boolean).map(w=>w[0]).join('').slice(0,3) || 'PnP';
 // Company logo: Admin upload first, then assets/logo.png in the repo; hidden if neither exists
 (function showLogo(){
-  const src = ADMIN.logo || 'assets/logo.png';
-  [['brandLogo',null],['sbLogo','.sb-brand']].forEach(([id, textSel])=>{
-    const img = document.getElementById(id);
-    img.onload = ()=>{ img.style.display = ''; if(textSel) document.querySelector(textSel).style.display = 'none'; };
-    img.onerror = ()=>{ img.style.display = 'none'; };
-    img.src = src;
+  // header: full logo on an indigo badge; sidebar: the running-man icon
+  const sources = { brandLogo: [ADMIN.logo, 'assets/logo.png?v=20260924'], sbLogo: ['assets/logo-icon.png?v=20260924', ADMIN.logo] };
+  Object.entries(sources).forEach(([id, list])=>{
+    const img = document.getElementById(id), queue = list.filter(Boolean);
+    const next = ()=>{ if(!queue.length){ img.style.display = 'none'; return; } img.src = queue.shift(); };
+    img.onload = ()=>{ img.style.display = ''; if(id==='sbLogo') document.querySelector('.sb-brand').style.display = 'none'; };
+    img.onerror = next;
+    next();
   });
 })();
 /* admin: uploads + live weight totals */
@@ -427,7 +430,7 @@ document.getElementById('admSalespersonList').addEventListener('change', async e
     return;
   }
   const d = e.target.closest('[data-sp-dept]');
-  if(d){ const t = document.querySelector(`[data-sp-newc="${CSS.escape(d.dataset.spDept)}"]`); if(t) t.disabled = d.value!=='NBD'; }
+  if(d){ const t = document.querySelector(`[data-sp-newc="${CSS.escape(d.dataset.spDept)}"]`); if(t){ t.disabled = d.value!=='NBD'; t.placeholder = d.value==='NBD' ? 'e.g. 8' : 'NBD only'; } }
 });
 document.getElementById('admSalespersonList').addEventListener('click', e=>{
   const b = e.target.closest('[data-sp-photo-del]'); if(!b) return;

@@ -31,7 +31,7 @@ function loadPinDb(){
     };
     if(window.PINCODE_DB) return build();
     const s = document.createElement('script');
-    s.src = 'js/vendor/pincodes.js';
+    s.src = 'js/vendor/pincodes.js?v=20260924';
     s.onload = build;
     s.onerror = ()=>{ pinDbPromise = null; rej(new Error('js/vendor/pincodes.js not found')); };
     document.body.appendChild(s);

@@ -160,7 +160,11 @@ function safe(name, fn){
   try{ fn(); }
   catch(e){
     console.error('['+name+']', e);
-    if(!RENDER_ISSUES.has(name)){ RENDER_ISSUES.add(name); showToast(`“${name}” couldn’t be drawn: ${e.message}`); }
+    if(!RENDER_ISSUES.has(name)){
+      RENDER_ISSUES.add(name);
+      const mismatch = /of null|is not defined|is not a function/.test(e.message);
+      showToast(mismatch ? `“${name}” couldn’t be drawn — the page files look out of date. Press Ctrl + Shift + R; if it stays, re-upload all files from the latest zip.` : `“${name}” couldn’t be drawn: ${e.message}`);
+    }
   }
 }
 function renderAll(){
